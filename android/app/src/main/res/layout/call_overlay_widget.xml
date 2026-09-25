@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/overlay_root"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:elevation="12dp">
+
+    <LinearLayout
+        android:id="@+id/overlay_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/call_overlay_background"
+        android:minWidth="168dp"
+        android:orientation="vertical"
+        android:paddingStart="10dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="10dp"
+        android:paddingBottom="8dp">
+
+        <LinearLayout
+            android:id="@+id/overlay_header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingBottom="8dp">
+
+            <View
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/call_overlay_active_dot" />
+
+            <TextView
+                android:id="@+id/overlay_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Buzz call"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="↗"
+                android:textColor="#B3FFFFFF"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/btn_emoji"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/call_overlay_button_bg"
+                android:contentDescription="Send emoji"
+                android:gravity="center"
+                android:text="😊"
+                android:textSize="18sp" />
+
+            <ImageButton
+                android:id="@+id/btn_mic"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/call_overlay_button_bg"
+                android:contentDescription="Toggle microphone"
+                android:padding="8dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_call_overlay_mic" />
+
+            <ImageButton
+                android:id="@+id/btn_end_call"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="@drawable/call_overlay_end_call_bg"
+                android:contentDescription="End call"
+                android:padding="10dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_call_overlay_close" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

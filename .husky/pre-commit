@@ -1,0 +1,25 @@
+echo '🏗️👷 Running React Native pre-commit checks...'
+
+# Check Prettier standards
+npm run check-format || (
+    echo '🤢 Prettier check failed. Run npm run format, add changes, and try again.'
+    false
+)
+
+# Check ESLint standards
+npm run check-lint || (
+    echo '😤 ESLint check failed. Fix the issues above, add changes, and try again.'
+    false
+)
+
+# Check TypeScript
+npm run check-types || (
+    echo '🤡 TypeScript check failed. Fix the type errors above and try again.'
+    false
+)
+
+# Auto-fix staged files
+npm run pre-commit || (
+    echo '❌ lint-staged failed. Fix the issues above and try again.'
+    false
+)

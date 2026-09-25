@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../zedu-fe"
+		}
+	],
+	"settings": {
+		"js/ts.tsdk.path": "zedu-mobile/node_modules/typescript/lib"
+	}
+}

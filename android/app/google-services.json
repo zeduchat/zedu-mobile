@@ -1,0 +1,50 @@
+{
+  "project_info": {
+    "project_number": "764182056638",
+    "project_id": "telex-f4291",
+    "storage_bucket": "telex-f4291.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:764182056638:android:4f7bbb51bd96cf78e318ef",
+        "android_client_info": {
+          "package_name": "net.emerj.zedu"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "764182056638-tkqfudhvh5rf88rejato4vn1b4miu1c8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "net.emerj.zedu",
+            "certificate_hash": "1f86b40753f785302036a143d6e6c2df7e07d9dc"
+          }
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQyUxrm1z9tQMhTZYsw5Wjz4T9EgJhRvQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "764182056638-bi8bet0rdoabaeq24bqsdnb5iukn7ko4.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "764182056638-ctjh8smf5p1hi1rb7ggn5i3r5rufrjsg.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "net.emerj.zedu"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

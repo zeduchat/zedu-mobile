@@ -1,0 +1,76 @@
+name: PR Review Bot
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: pr-review-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  pr-review:
+    name: Structure, reuse, URLs, and secrets
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run PR review
+        id: review
+        continue-on-error: true
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            node .github/scripts/pr-review/run.mjs \
+              --base "origin/${{ github.base_ref }}" \
+              --head HEAD \
+              --config .github/pr-review.config.json \
+              --output review-report.json
+          else
+            BEFORE="${{ github.event.before }}"
+            AFTER="${{ github.event.after }}"
+            if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+              BEFORE="HEAD~1"
+            fi
+            node .github/scripts/pr-review/run.mjs \
+              --base "$BEFORE" \
+              --head "$AFTER" \
+              --config .github/pr-review.config.json \
+              --output review-report.json
+          fi
+
+      - name: Post PR comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: github.event_name == 'pull_request' && always()
+        with:
+          header: pr-review-bot
+          path: review-report.md
+
+      - name: Fail on review errors
+        if: steps.review.outcome == 'failure'
+        run: exit 1

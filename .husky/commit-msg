@@ -1,0 +1,8 @@
+echo "🤔 Validating commit message format..."
+
+npx --no -- commitlint --edit "$1" || (
+    echo '🤡 Commit message does not follow conventional commits (e.g. feat: add login screen).'
+    false
+)
+
+echo '✅ Commit message looks good.'

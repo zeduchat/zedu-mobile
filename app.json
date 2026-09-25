@@ -1,0 +1,10 @@
+{
+  "name": "Zedu",
+  "displayName": "Zedu",
+  "ios": {
+    "bundleIdentifier": "net.emerj.zedu"
+  },
+  "android": {
+    "package": "net.emerj.zedu"
+  }
+}

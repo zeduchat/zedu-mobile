@@ -1,0 +1,118 @@
+# Resolve react_native_pods.rb with node to allow for hoisting
+require Pod::Executable.execute_command('node', ['-p',
+  'require.resolve(
+    "react-native/scripts/react_native_pods.rb",
+    {paths: [process.argv[1]]},
+  )', __dir__]).strip
+
+platform :ios, min_ios_version_supported
+prepare_react_native_project!
+
+linkage = ENV['USE_FRAMEWORKS']
+if linkage != nil
+  Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
+  use_frameworks! :linkage => linkage.to_sym
+end
+
+target 'Zedu' do
+  config = use_native_modules!
+
+  # Required for Google Sign-In / AppCheckCore when linking pods as static libraries.
+  pod 'GoogleUtilities', :modular_headers => true
+  pod 'RecaptchaInterop', :modular_headers => true
+
+  use_react_native!(
+    :path => config[:reactNativePath],
+    # An absolute path to your application root.
+    :hermes_enabled => true, # Ensure this is true
+    :app_path => "#{Pod::Config.instance.installation_root}/.."
+  )
+
+  post_install do |installer|
+    react_native_post_install(
+      installer,
+      config[:reactNativePath],
+      :mac_catalyst_enabled => false,
+      # :ccache_enabled => true
+    )
+
+    installer.aggregate_targets.each do |aggregate_target|
+      aggregate_target.user_project.native_targets.each do |native_target|
+        next unless native_target.name == 'ScreenSharing'
+
+        native_target.build_configurations.each do |build_config|
+          build_config.build_settings['APPLICATION_EXTENSION_API_ONLY'] = 'YES'
+          build_config.build_settings['FRAMEWORK_SEARCH_PATHS'] = [
+            '$(inherited)',
+            '"${SRCROOT}/Pods/AgoraVideo_Special_iOS/AgoraReplayKitExtension.xcframework/ios-arm64"',
+            '"${SRCROOT}/Pods/AgoraVideo_Special_iOS/AgoraReplayKitExtension.xcframework/ios-arm64_x86_64-simulator"',
+          ]
+          build_config.build_settings['HEADER_SEARCH_PATHS'] = [
+            '$(inherited)',
+            '"${SRCROOT}/Pods/AgoraVideo_Special_iOS/AgoraReplayKitExtension.xcframework/ios-arm64/AgoraReplayKitExtension.framework/Headers"',
+            '"${SRCROOT}/Pods/AgoraVideo_Special_iOS/AgoraReplayKitExtension.xcframework/ios-arm64_x86_64-simulator/AgoraReplayKitExtension.framework/Headers"',
+          ]
+          build_config.build_settings['OTHER_LDFLAGS'] = [
+            '$(inherited)',
+            '-framework AgoraReplayKitExtension',
+            '-weak_framework AgoraReplayKitExtension',
+          ].join(' ')
+        end
+      end
+    end
+  end
+end
+
+
+target 'OneSignalNotificationServiceExtension' do
+  pod 'OneSignalXCFramework', '>= 5.0.0', '< 6.0'
+end
+
+
+
+# # Resolve react_native_pods.rb with node to allow for hoisting
+# require Pod::Executable.execute_command('node', ['-p',
+#   'require.resolve(
+#     "react-native/scripts/react_native_pods.rb",
+#     {paths: [process.argv[1]]},
+#   )', __dir__]).strip
+
+# platform :ios, min_ios_version_supported
+# prepare_react_native_project!
+
+# # Define config at the top level so it is accessible everywhere
+# config = use_native_modules!
+
+# linkage = ENV['USE_FRAMEWORKS']
+# if linkage != nil
+#   Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
+#   use_frameworks! :linkage => linkage.to_sym
+# end
+
+# target 'Zedu' do
+#   use_react_native!(
+#     :path => config[:reactNativePath],
+#     :hermes_enabled => true,
+#     :app_path => "#{Pod::Config.instance.installation_root}/.."
+#   )
+# end
+
+# post_install do |installer|
+#   # 1. Run the mandatory React Native configuration using the top-level config
+#   react_native_post_install(
+#     installer,
+#     config[:reactNativePath],
+#     :mac_catalyst_enabled => false
+#   )
+  
+#   installer.pods_project.targets.each do |target|
+#     target.build_configurations.each do |config|
+#       config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf-with-dsym'
+#       # config.build_settings['APPLICATION_EXTENSION_API_ONLY'] = 'NO'
+#     end
+#   end
+# end
+
+# target 'OneSignalNotificationServiceExtension' do
+#   pod 'OneSignalXCFramework', '>= 5.0.0', '< 6.0'
+# end 

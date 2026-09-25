@@ -1,0 +1,109 @@
+{
+  "failOnWarnings": false,
+  "structure": {
+    "componentExtensions": [".tsx", ".jsx"],
+    "allowedPaths": [
+      "src/components/",
+      "src/screens/",
+      "src/navigation/",
+      "src/hooks/",
+      "src/services/",
+      "src/centrifugoo/",
+      "src/store/",
+      "src/lib/",
+      "src/native/",
+      "src/types/",
+      "src/utils/",
+      "src/theme/",
+      "src/data/"
+    ],
+    "allowedExactFiles": [
+      "App.tsx"
+    ]
+  },
+  "reuse": {
+    "sharedComponents": [
+      { "name": "button.tsx", "path": "src/components/ui/button.tsx" },
+      { "name": "text.tsx", "path": "src/components/ui/text.tsx" },
+      { "name": "input.tsx", "path": "src/components/ui/input.tsx" },
+      { "name": "bottom-sheet.tsx", "path": "src/components/ui/bottom-sheet.tsx" },
+      { "name": "messagItem.tsx", "path": "src/components/layout/chat/messagItem.tsx" },
+      { "name": "voice-recorder.tsx", "path": "src/components/layout/chat/voice-recorder.tsx" },
+      { "name": "workspace-drawer.tsx", "path": "src/components/layout/workspace-drawer.tsx" },
+      { "name": "agora.service.ts", "path": "src/services/agora.service.ts" }
+    ],
+    "duplicatePatterns": [
+      " copy",
+      "messagItem",
+      "voice-recorder",
+      "workspace-drawer",
+      "agora.service",
+      "chat-input"
+    ]
+  },
+  "imports": {
+    "preferredAlias": "@/",
+    "deprecatedAlias": "@components/"
+  },
+  "hardcodedUrls": {
+    "allowPatterns": [
+      "^https?://(www\\.)?w3\\.org(/|$)",
+      "^https?://(www\\.)?zedu\\.chat(/|$)",
+      "^https?://api\\.zedu\\.chat(/|$)",
+      "^https?://view\\.officeapps\\.live\\.com(/|$)",
+      "^https?://docs\\.google\\.com(/|$)",
+      "^https?://reactnavigation\\.org(/|$)"
+    ],
+    "excludePathPrefixes": [".github/", "android/", "ios/"],
+    "scanExtensions": [".ts", ".tsx", ".js", ".jsx", ".mjs"]
+  },
+  "secrets": {
+    "forbiddenFilePatterns": [
+      "^\\.env",
+      "^\\.ENV",
+      "\\.pem$",
+      "credentials\\.json$",
+      "secrets\\.json$",
+      "service-account.*\\.json$",
+      "(^|/)\\.keystore$"
+    ],
+    "addedLinePatterns": [
+      { "name": "stripe-live-key", "pattern": "sk_live_[A-Za-z0-9]{16,}" },
+      { "name": "stripe-test-key", "pattern": "sk_test_[A-Za-z0-9]{16,}" },
+      { "name": "github-pat", "pattern": "ghp_[A-Za-z0-9]{20,}" },
+      { "name": "google-api-key", "pattern": "AIza[A-Za-z0-9_-]{20,}" },
+      { "name": "aws-access-key", "pattern": "AKIA[A-Z0-9]{16}" },
+      { "name": "slack-token", "pattern": "xox[baprs]-[A-Za-z0-9-]{10,}" },
+      { "name": "jwt-bearer", "pattern": "Bearer eyJ[A-Za-z0-9_-]{10,}\\." },
+      {
+        "name": "private-key-block",
+        "pattern": "-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----"
+      },
+      {
+        "name": "agora-certificate",
+        "pattern": "AGORA_APP_CERTIFICATE\\s*=\\s*[\"'][^\"']+[\"']"
+      }
+    ],
+    "genericAssignments": {
+      "minLength": 20,
+      "minEntropy": 3.5
+    },
+    "scanExtensions": [
+      ".ts",
+      ".tsx",
+      ".js",
+      ".jsx",
+      ".mjs",
+      ".json",
+      ".yaml",
+      ".yml",
+      ".kt",
+      ".swift"
+    ],
+    "excludeFromLineScan": ["package-lock.json", "yarn.lock", "pnpm-lock.yaml"]
+  },
+  "jscpd": {
+    "minLines": 10,
+    "minTokens": 50
+  }
+}
