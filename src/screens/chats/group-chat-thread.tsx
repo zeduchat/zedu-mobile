@@ -30,6 +30,8 @@ import uuid from 'react-native-uuid';
 import MentionUserBottomSheet, {
   MentionUserBottomSheetRef,
 } from '@/components/layout/chat/mention-user-bottomsheet';
+import { MentionSheet } from '@/components/layout/chat/mention-sheet';
+import { buildMentionHtmlTag } from '@/utils/message-text';
 import ThreadScreenHeader from '@/components/layout/chat/thread-screen-header';
 
 const GroupChatThreadScreen = ({ navigation, route }: any) => {
@@ -37,6 +39,11 @@ const GroupChatThreadScreen = ({ navigation, route }: any) => {
   const styles = useMemo(() => createChatDetailStyles(colors), [colors]);
   const [message, setMessage] = useState('');
   const [isEmojiOpen, setIsEmojiOpen] = useState(false);
+  const [mentionState, setMentionState] = useState<{
+    query: string;
+    pos: number;
+  } | null>(null);
+  const [mentionsMetadata, setMentionsMetadata] = useState<any[]>([]);
   const flatListRef = useRef<FlatList>(null);
   const actionSheetRef = useRef<any>(null);
   const pickerSheetRef = useRef<any>(null);
@@ -102,12 +109,51 @@ const GroupChatThreadScreen = ({ navigation, route }: any) => {
     pickerSheetRef.current?.expand();
   };
 
+  const mentionParticipants = useMemo(
+    () => (Array.isArray(participant) ? participant : []),
+    [participant],
+  );
+
+  const handleMentionTrigger = (query: string, pos: number) => {
+    setMentionState({ query, pos });
+  };
+
+  const handleMentionSelect = (selectedUser: any) => {
+    if (!mentionState) return;
+
+    const { pos, query } = mentionState;
+    const mentionStart = pos - query.length - 1;
+
+    const textBefore = message.substring(0, mentionStart);
+    const textAfter = message.substring(pos);
+
+    const newMessage = `${textBefore}@${selectedUser.username} ${textAfter}`;
+
+    setMessage(newMessage);
+
+    setMentionsMetadata(prev => [
+      ...prev,
+      {
+        id: selectedUser.user_id,
+        label: selectedUser.username,
+        type: 'user',
+      },
+    ]);
+
+    setMentionState(null);
+  };
+
   const handleSendMessage = async (content: string, medias: any[] = []) => {
     if (!content.trim() && medias.length === 0) return;
 
     handleTyping(false);
 
-    const formattedContent = `<p>${content}</p>`;
+    let formattedContent = content;
+    mentionsMetadata.forEach(m => {
+      const mentionTag = buildMentionHtmlTag(m);
+      formattedContent = formattedContent.replace(`@${m.label}`, mentionTag);
+    });
+    const finalHtml = `<p>${formattedContent}</p>`;
 
     const optimisticMessage = {
       channels_id: channel_id,
@@ -115,7 +161,7 @@ const GroupChatThreadScreen = ({ navigation, route }: any) => {
       thread_id: thread_id,
       username: state.user?.username || 'You',
       avatar_url: state.user?.avatar_url,
-      message: formattedContent,
+      message: finalHtml,
       created_at: new Date().toISOString(),
       status: 'pending',
       type: 'message',
@@ -131,13 +177,15 @@ const GroupChatThreadScreen = ({ navigation, route }: any) => {
     });
 
     setMessage('');
+    setMentionsMetadata([]);
 
     const payload = {
       channels_id: channel_id,
       thread_id: thread_id,
-      content: formattedContent,
+      content: finalHtml,
       media: medias,
       user_id: state.user?.user_id,
+      mentions: mentionsMetadata,
     };
 
     await PostRequest(getThreadMessageSendUrl('group_dm', channel_id), payload);
@@ -286,6 +334,14 @@ const GroupChatThreadScreen = ({ navigation, route }: any) => {
       )}
 
       <ChatKeyboardAvoidingView>
+        {mentionState && (
+          <MentionSheet
+            query={mentionState.query}
+            participants={mentionParticipants}
+            onSelect={handleMentionSelect}
+          />
+        )}
+
         <ChatInput
           message={message}
           setMessage={setMessage}
@@ -301,6 +357,10 @@ const GroupChatThreadScreen = ({ navigation, route }: any) => {
           onCloseEmoji={() => setIsEmojiOpen(false)}
           isEmojiOpen={isEmojiOpen}
           onFocus={() => pickerSheetRef.current?.close()}
+          onMentionTrigger={handleMentionTrigger}
+          onMentionCancel={() => {
+            setMentionState(null);
+          }}
         />
 
         {isEmojiOpen && (

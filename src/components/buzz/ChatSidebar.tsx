@@ -143,7 +143,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
           showsVerticalScrollIndicator={false}
         />
 
-        <ChatKeyboardAvoidingView>
+        <ChatKeyboardAvoidingView style={{ backgroundColor: colors.surface }}>
           <View style={styles.inputWrapper}>
             {typingUsers.length > 0 && (
               <View style={styles.typingIndicator}>

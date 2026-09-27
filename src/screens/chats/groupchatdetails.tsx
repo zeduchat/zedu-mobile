@@ -1,4 +1,10 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useMemo,
+  useCallback,
+} from 'react';
 import {
   View,
   Image,
@@ -6,6 +12,7 @@ import {
   TouchableOpacity,
   Keyboard,
   ActivityIndicator,
+  InteractionManager,
 } from 'react-native';
 import { AppText } from '@/components/ui/text';
 import Container from '@/components/layout/container';
@@ -34,12 +41,14 @@ import MentionUserBottomSheet, {
   MentionUserBottomSheetRef,
 } from '@/components/layout/chat/mention-user-bottomsheet';
 import Feather from 'react-native-vector-icons/Feather';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import BuzzService from '@/services/buzz.service';
 import { ShowNotify } from '@/components/ui/toast';
 import ChatBackground from '@/components/layout/chat/chat-background';
 import buzzService from '@/services/buzz.service';
 import { MessageAction } from '@/components/layout/group-chat/message-action';
 import { useMessageDraft } from '@/hooks/useMessageDraft';
+import { PinnedMessagesSheet } from '@/components/layout/chat/pinned-messages-sheet';
 
 const GroupChatDetailScreen = ({ navigation, route }: any) => {
   const { colors } = useTheme();
@@ -66,6 +75,9 @@ const GroupChatDetailScreen = ({ navigation, route }: any) => {
   const [mentionsMetadata, setMentionsMetadata] = useState<any[]>([]);
   const [onEdit, setOnEdit] = useState(false);
   const [editMsgId, _setEditMsgId] = useState<string | null>(null);
+  const [pinnedSheetVisible, setPinnedSheetVisible] = useState(false);
+  const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
+  const [mentionSheetUser, setMentionSheetUser] = useState<any | null>(null);
 
   const { state, dispatch } = useDataContext();
   const { handleTyping } = useTyping(state.chatSubscription);
@@ -135,9 +147,28 @@ const GroupChatDetailScreen = ({ navigation, route }: any) => {
     if (!participant || !Array.isArray(participant)) return;
     const found = participant.find((p: any) => p.user_id === userId);
     if (found) {
-      mentionUserSheetRef.current?.open(found);
+      setMentionSheetUser(found);
     }
   };
+
+  const listFooter = useCallback(() => {
+    if (!isFetchingMore) return null;
+    return (
+      <ActivityIndicator
+        size="small"
+        color={colors.primary}
+        style={{ margin: 10 }}
+      />
+    );
+  }, [isFetchingMore, colors.primary]);
+
+  useEffect(() => {
+    if (!mediaPickerOpen) return;
+    const task = InteractionManager.runAfterInteractions(() => {
+      pickerSheetRef.current?.expand();
+    });
+    return () => task.cancel();
+  }, [mediaPickerOpen]);
 
   const mentionParticipants = useMemo(
     () => (Array.isArray(participant) ? participant : []),
@@ -502,6 +533,17 @@ const GroupChatDetailScreen = ({ navigation, route }: any) => {
         </TouchableOpacity>
 
         <TouchableOpacity
+          style={{ padding: 5, borderRadius: 5, marginRight: 4 }}
+          onPress={() => setPinnedSheetVisible(true)}
+        >
+          <MaterialCommunityIcons
+            name="pin"
+            size={20}
+            color={colors.iconDefault}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={{ padding: 5, borderRadius: 5, marginRight: 10 }}
           onPress={handleVideoCall}
         >
@@ -546,15 +588,7 @@ const GroupChatDetailScreen = ({ navigation, route }: any) => {
         contentContainerStyle={styles.listContent}
         onEndReached={loadMore}
         onEndReachedThreshold={0.1}
-        ListFooterComponent={() =>
-          isFetchingMore ? (
-            <ActivityIndicator
-              size="small"
-              color={colors.primary}
-              style={{ margin: 10 }}
-            />
-          ) : null
-        }
+        ListFooterComponent={listFooter}
       />
 
       <ChatKeyboardAvoidingView>
@@ -578,11 +612,14 @@ const GroupChatDetailScreen = ({ navigation, route }: any) => {
           onVoiceCancel={handleVoiceCancel}
           isVoiceUploading={isVoiceUploading}
           onPickImage={pickImage}
-          onMediaPicker={() => pickerSheetRef.current?.expand()}
+          onMediaPicker={() => setMediaPickerOpen(true)}
           onOpenEmoji={() => setIsEmojiOpen(true)}
           onCloseEmoji={() => setIsEmojiOpen(false)}
           isEmojiOpen={isEmojiOpen}
-          onFocus={() => pickerSheetRef.current?.close()}
+          onFocus={() => {
+            pickerSheetRef.current?.close();
+            setMediaPickerOpen(false);
+          }}
           onMentionTrigger={handleMentionTrigger}
           onMentionCancel={() => {
             setMentionState(null);
@@ -609,17 +646,22 @@ const GroupChatDetailScreen = ({ navigation, route }: any) => {
         )}
       </ChatKeyboardAvoidingView>
 
-      <MessageAction
-        ref={actionSheetRef}
-        item={selectedMsg}
-        onClose={onClose}
-      />
+      {selectedMsg && (
+        <MessageAction
+          ref={actionSheetRef}
+          item={selectedMsg}
+          onClose={onClose}
+        />
+      )}
 
-      <MediaPickerSheet
-        ref={pickerSheetRef}
-        setPendingMedia={setPendingMedia}
-        setIsEditorVisible={setIsEditorVisible}
-      />
+      {mediaPickerOpen && (
+        <MediaPickerSheet
+          ref={pickerSheetRef}
+          setPendingMedia={setPendingMedia}
+          setIsEditorVisible={setIsEditorVisible}
+          onClose={() => setMediaPickerOpen(false)}
+        />
+      )}
 
       {pendingMedia && (
         <MediaEditorModal
@@ -633,7 +675,20 @@ const GroupChatDetailScreen = ({ navigation, route }: any) => {
         />
       )}
 
-      <MentionUserBottomSheet ref={mentionUserSheetRef} />
+      {mentionSheetUser && (
+        <MentionUserBottomSheet
+          ref={mentionUserSheetRef}
+          user={mentionSheetUser}
+          onClose={() => setMentionSheetUser(null)}
+        />
+      )}
+
+      <PinnedMessagesSheet
+        visible={pinnedSheetVisible}
+        onClose={() => setPinnedSheetVisible(false)}
+        channelId={channel_id}
+        scope="chat"
+      />
     </Container>
   );
 };

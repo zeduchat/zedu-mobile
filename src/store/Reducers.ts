@@ -266,6 +266,32 @@ const reducers = (state: AppState, action: Action): AppState => {
         ),
       };
 
+    case ACTIONS.UPDATE_DM_PIN: {
+      const { threadId, is_pin, details } = action.payload;
+      const selectedMsg =
+        state.selectedMsg?.thread_id === threadId
+          ? {
+              ...state.selectedMsg,
+              is_pinned: is_pin,
+              pinned_details: details,
+            }
+          : state.selectedMsg;
+
+      return {
+        ...state,
+        selectedMsg,
+        dmsChat: state.dmsChat.map(message =>
+          message.thread_id === threadId
+            ? {
+                ...message,
+                is_pinned: is_pin,
+                pinned_details: details,
+              }
+            : message,
+        ),
+      };
+    }
+
     case ACTIONS.RESET_DM_THREAD_COUNT:
       return {
         ...state,
@@ -622,6 +648,32 @@ const reducers = (state: AppState, action: Action): AppState => {
       };
     }
 
+    case ACTIONS.UPDATE_CHANNEL_PIN: {
+      const { threadId, is_pin, details } = action.payload;
+      const selectedMsg =
+        state.selectedMsg?.thread_id === threadId
+          ? {
+              ...state.selectedMsg,
+              is_pinned: is_pin,
+              pinned_details: details,
+            }
+          : state.selectedMsg;
+
+      return {
+        ...state,
+        selectedMsg,
+        channelsChat: state.channelsChat.map(message =>
+          message.thread_id === threadId
+            ? {
+                ...message,
+                is_pinned: is_pin,
+                pinned_details: details,
+              }
+            : message,
+        ),
+      };
+    }
+
     case ACTIONS.RESET_CHANNEL_THREAD_COUNT:
       return {
         ...state,
@@ -730,6 +782,24 @@ const reducers = (state: AppState, action: Action): AppState => {
             : message;
         }),
       };
+
+    case ACTIONS.UPDATE_REPLY_PIN: {
+      const { threadId, is_pin, details } = action.payload;
+
+      return {
+        ...state,
+        replyChat: state.replyChat.map((message: any) => {
+          const messageId = message?.id ?? message?.message_id;
+          return String(messageId) === String(threadId)
+            ? {
+                ...message,
+                is_pinned: is_pin,
+                pinned_details: details,
+              }
+            : message;
+        }),
+      };
+    }
 
     // --------------- AGENTS SECTION --------------------------
 

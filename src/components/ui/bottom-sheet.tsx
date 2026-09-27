@@ -4,6 +4,7 @@ import React, {
   useImperativeHandle,
   useMemo,
   useRef,
+  useState,
 } from 'react';
 import { StyleSheet } from 'react-native';
 import BottomSheet, {
@@ -52,6 +53,7 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, Props>(
   ) => {
     const { colors } = useTheme();
     const bottomSheetRef = useRef<BottomSheet>(null);
+    const [sheetIndex, setSheetIndex] = useState(-1);
     const themedStyles = useMemo(
       () =>
         StyleSheet.create({
@@ -71,8 +73,13 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, Props>(
         }),
       [colors],
     );
-    const { backgroundStyle, handleIndicatorStyle, ...bottomSheetProps } =
-      props;
+    const {
+      backgroundStyle,
+      handleIndicatorStyle,
+      onChange,
+      style,
+      ...bottomSheetProps
+    } = props;
 
     useImperativeHandle(ref, () => ({
       expand: () => bottomSheetRef.current?.expand(),
@@ -80,6 +87,14 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, Props>(
       snapToIndex: (index: number) =>
         bottomSheetRef.current?.snapToIndex(index),
     }));
+
+    const handleChange = useCallback(
+      (index: number, position: number, type: any) => {
+        setSheetIndex(index);
+        onChange?.(index, position, type);
+      },
+      [onChange],
+    );
 
     const renderBackdrop = useCallback(
       (backdropProps: BottomSheetBackdropProps) => (
@@ -90,7 +105,7 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, Props>(
           opacity={showBackdrop ? 0.5 : 0}
         />
       ),
-      [],
+      [showBackdrop],
     );
 
     return (
@@ -108,6 +123,9 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, Props>(
         activeOffsetY={[-5, 5]}
         failOffsetX={[-5, 5]}
         {...bottomSheetProps}
+        onChange={handleChange}
+        // Closed sheets still sit in the tree and steal taps (e.g. Settings list).
+        style={[{ pointerEvents: sheetIndex >= 0 ? 'auto' : 'none' }, style]}
         enableDynamicSizing={false}
       >
         {scrollable ? (

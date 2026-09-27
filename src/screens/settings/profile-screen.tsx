@@ -298,7 +298,7 @@ const ProfileScreen = ({ navigation }: any) => {
   };
 
   return (
-    <Container>
+    <Container safeBottom>
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}

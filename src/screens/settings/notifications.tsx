@@ -353,7 +353,7 @@ const NotificationScreen = ({ navigation }: any) => {
   };
 
   return (
-    <Container>
+    <Container safeBottom>
       <View style={styles.stackHeader}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}

@@ -230,6 +230,75 @@ const DMConnection = ({ id }: Props) => {
         });
       }
 
+      // PINNED DM MESSAGE
+      if (
+        data?.section === 'thread_message' &&
+        data?.notification_type === 'pinned_message_event'
+      ) {
+        const ids = data?.modification_ids;
+        const details = data?.pinned_details;
+
+        dispatch({
+          type: ACTIONS.UPDATE_DM_PIN,
+          payload: {
+            threadId: ids?.thread_id,
+            is_pin: true,
+            details,
+          },
+        });
+      }
+
+      // PINNED DM REPLY
+      if (
+        data?.section === 'reply_message' &&
+        data?.notification_type === 'pinned_message_event'
+      ) {
+        const ids = data?.modification_ids;
+
+        dispatch({
+          type: ACTIONS.UPDATE_REPLY_PIN,
+          payload: {
+            threadId: ids?.message_id,
+            is_pin: true,
+            details: data?.pinned_details,
+          },
+        });
+      }
+
+      // UNPINNED DM MESSAGE
+      if (
+        data?.section === 'thread_message' &&
+        data?.notification_type === 'unpinned_message_event'
+      ) {
+        const ids = data?.modification_ids;
+
+        dispatch({
+          type: ACTIONS.UPDATE_DM_PIN,
+          payload: {
+            threadId: ids?.thread_id,
+            is_pin: false,
+            details: null,
+          },
+        });
+      }
+
+      // UNPINNED DM REPLY
+      if (
+        data?.section === 'reply_message' &&
+        data?.notification_type === 'unpinned_message_event'
+      ) {
+        const ids = data?.modification_ids;
+
+        dispatch({
+          type: ACTIONS.UPDATE_REPLY_PIN,
+          payload: {
+            threadId: ids?.message_id,
+            is_pin: false,
+            details: null,
+          },
+        });
+      }
+
       if (isGroupParticipantChangeEvent(data)) {
         const participantsList = extractGroupParticipants(data);
 

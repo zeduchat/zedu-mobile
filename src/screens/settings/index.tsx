@@ -272,22 +272,22 @@ const SettingsHome = () => {
             />
           </View>
         </View>
-
-        <LogoutConfirmationModal
-          visible={isLogoutModalVisible}
-          onClose={() => setLogoutModalVisible(false)}
-        />
-        <StatusSheet
-          ref={statusSheetRef}
-          initialText={statusText}
-          initialEmoji={statusEmoji}
-          onChange={(emoji, text, clearAfter) => {
-            setStatusEmoji(emoji || '');
-            setStatusText(text || '');
-            setStatusClearAfter(clearAfter || 'dont');
-          }}
-        />
       </ScrollView>
+
+      <LogoutConfirmationModal
+        visible={isLogoutModalVisible}
+        onClose={() => setLogoutModalVisible(false)}
+      />
+      <StatusSheet
+        ref={statusSheetRef}
+        initialText={statusText}
+        initialEmoji={statusEmoji}
+        onChange={(emoji, text, clearAfter) => {
+          setStatusEmoji(emoji || '');
+          setStatusText(text || '');
+          setStatusClearAfter(clearAfter || 'dont');
+        }}
+      />
     </Container>
   );
 };

@@ -15,6 +15,7 @@ import { UserStatusIcon } from '@/components/ui/user-status-icon';
 import { isVoiceMessageMedia } from '@/utils/voice-message';
 import { isVideoFile } from '@/utils/file-helpers';
 import moment from 'moment';
+import { PinnedMessageBanner } from '../chat/pinned-message-banner';
 
 const ThreadItem = ({ item, onMentionUser }: any) => {
   const { colors } = useTheme();
@@ -130,7 +131,12 @@ const ThreadItem = ({ item, onMentionUser }: any) => {
   //
 
   return (
-    <View style={[styles.rowContainer]}>
+    <View
+      style={[
+        styles.rowContainer,
+        item.is_pinned ? { backgroundColor: colors.lightYellow } : undefined,
+      ]}
+    >
       <UserStatusIcon user={item} style={styles.threadStatusIcon} />
       <TouchableOpacity
         style={styles.groupAvatarContainer}
@@ -143,6 +149,7 @@ const ThreadItem = ({ item, onMentionUser }: any) => {
       </TouchableOpacity>
 
       <View style={styles.messageColumn}>
+        <PinnedMessageBanner item={item} />
         <TouchableOpacity activeOpacity={0.8} style={styles.messageWrapper}>
           <View style={{ width: '100%', minWidth: 0 }}>
             <View style={styles.senderRow}>

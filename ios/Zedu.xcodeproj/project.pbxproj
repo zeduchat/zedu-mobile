@@ -129,14 +129,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		EAD9EA182F13273300FA25E4 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		EAD9EA182F13273300FA25E4 /* Exceptions for "OneSignalNotificationServiceExtension" folder in "OneSignalNotificationServiceExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
 			target = EAD9EA0F2F13273300FA25E4 /* OneSignalNotificationServiceExtension */;
 		};
-		ESC1EA182F13273300FA25E4 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		ESC1EA182F13273300FA25E4 /* Exceptions for "ScreenSharing" folder in "ScreenSharing" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -146,8 +146,30 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		EAD9EA112F13273300FA25E4 /* OneSignalNotificationServiceExtension */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (EAD9EA182F13273300FA25E4 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = OneSignalNotificationServiceExtension; sourceTree = "<group>"; };
-		ESC1EA112F13273300FA25E4 /* ScreenSharing */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (ESC1EA182F13273300FA25E4 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = ScreenSharing; sourceTree = "<group>"; };
+		EAD9EA112F13273300FA25E4 /* OneSignalNotificationServiceExtension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				EAD9EA182F13273300FA25E4 /* Exceptions for "OneSignalNotificationServiceExtension" folder in "OneSignalNotificationServiceExtension" target */,
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = OneSignalNotificationServiceExtension;
+			sourceTree = "<group>";
+		};
+		ESC1EA112F13273300FA25E4 /* ScreenSharing */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				ESC1EA182F13273300FA25E4 /* Exceptions for "ScreenSharing" folder in "ScreenSharing" target */,
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = ScreenSharing;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -461,13 +483,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Zedu/Pods-Zedu-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Zedu/Pods-Zedu-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -504,13 +522,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Zedu/Pods-Zedu-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Zedu/Pods-Zedu-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -925,15 +939,15 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"${SRCROOT}/Pods/AgoraVideo_Special_iOS/AgoraReplayKitExtension.xcframework/ios-arm64\"",
-					"\"${SRCROOT}/Pods/AgoraVideo_Special_iOS/AgoraReplayKitExtension.xcframework/ios-arm64_x86_64-simulator\"",
+					"\"${SRCROOT}/Pods/AgoraRtcEngine_iOS/AgoraReplayKitExtension.xcframework/ios-arm64\"",
+					"\"${SRCROOT}/Pods/AgoraRtcEngine_iOS/AgoraReplayKitExtension.xcframework/ios-arm64_x86_64-simulator\"",
 				);
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"${SRCROOT}/Pods/AgoraVideo_Special_iOS/AgoraReplayKitExtension.xcframework/ios-arm64/AgoraReplayKitExtension.framework/Headers\"",
-					"\"${SRCROOT}/Pods/AgoraVideo_Special_iOS/AgoraReplayKitExtension.xcframework/ios-arm64_x86_64-simulator/AgoraReplayKitExtension.framework/Headers\"",
+					"\"${SRCROOT}/Pods/AgoraRtcEngine_iOS/AgoraReplayKitExtension.xcframework/ios-arm64/AgoraReplayKitExtension.framework/Headers\"",
+					"\"${SRCROOT}/Pods/AgoraRtcEngine_iOS/AgoraReplayKitExtension.xcframework/ios-arm64_x86_64-simulator/AgoraReplayKitExtension.framework/Headers\"",
 				);
 				INFOPLIST_FILE = ScreenSharing/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ScreenSharing;
@@ -985,15 +999,15 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"${SRCROOT}/Pods/AgoraVideo_Special_iOS/AgoraReplayKitExtension.xcframework/ios-arm64\"",
-					"\"${SRCROOT}/Pods/AgoraVideo_Special_iOS/AgoraReplayKitExtension.xcframework/ios-arm64_x86_64-simulator\"",
+					"\"${SRCROOT}/Pods/AgoraRtcEngine_iOS/AgoraReplayKitExtension.xcframework/ios-arm64\"",
+					"\"${SRCROOT}/Pods/AgoraRtcEngine_iOS/AgoraReplayKitExtension.xcframework/ios-arm64_x86_64-simulator\"",
 				);
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"${SRCROOT}/Pods/AgoraVideo_Special_iOS/AgoraReplayKitExtension.xcframework/ios-arm64/AgoraReplayKitExtension.framework/Headers\"",
-					"\"${SRCROOT}/Pods/AgoraVideo_Special_iOS/AgoraReplayKitExtension.xcframework/ios-arm64_x86_64-simulator/AgoraReplayKitExtension.framework/Headers\"",
+					"\"${SRCROOT}/Pods/AgoraRtcEngine_iOS/AgoraReplayKitExtension.xcframework/ios-arm64/AgoraReplayKitExtension.framework/Headers\"",
+					"\"${SRCROOT}/Pods/AgoraRtcEngine_iOS/AgoraReplayKitExtension.xcframework/ios-arm64_x86_64-simulator/AgoraReplayKitExtension.framework/Headers\"",
 				);
 				INFOPLIST_FILE = ScreenSharing/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ScreenSharing;

@@ -1,10 +1,18 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   View,
   Image,
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
 } from 'react-native';
 import { AppText } from '@/components/ui/text';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -29,9 +37,75 @@ import {
   isVideoFile,
 } from '@/utils/file-helpers';
 import { userCan } from '@/lib/role-permissions';
-import { PostRequest } from '@/utils/requests';
+import { GetRequest, PostRequest } from '@/utils/requests';
 import { MemberSearchInput } from '@/components/layout/chat/member-search-input';
-import { filterParticipantsBySearch } from '@/utils/participant-search';
+
+const CHANNEL_USERS_PAGE_SIZE = 20;
+const MEMBERS_SCROLL_LOAD_THRESHOLD = 200;
+
+type ChannelMember = {
+  user_id: string;
+  username?: string;
+  avatar_url?: string;
+  default_avatar_url?: string;
+  online?: boolean;
+  is_admin?: boolean;
+  full_name?: string;
+  title?: string;
+  email?: string;
+  [key: string]: any;
+};
+
+const getChannelUserId = (item: any): string =>
+  String(
+    item?.user_id ??
+      item?.id ??
+      item?.profile?.user_id ??
+      item?.profile?.id ??
+      '',
+  );
+
+const normalizeChannelMember = (item: any): ChannelMember | null => {
+  const userId = getChannelUserId(item);
+  if (!userId) {
+    return null;
+  }
+
+  const profile = item?.profile ?? item;
+
+  return {
+    ...item,
+    ...profile,
+    user_id: userId,
+    username: profile?.username ?? item?.username,
+    avatar_url: profile?.avatar_url ?? item?.avatar_url,
+    default_avatar_url: profile?.default_avatar_url ?? item?.default_avatar_url,
+    online: profile?.online ?? item?.online,
+    is_admin: item?.is_admin ?? profile?.is_admin,
+    full_name: profile?.full_name ?? item?.full_name,
+    title: profile?.title ?? item?.title,
+    email: profile?.email ?? item?.email,
+  };
+};
+
+const mergeChannelMembers = (
+  existing: ChannelMember[],
+  incoming: ChannelMember[],
+): ChannelMember[] => {
+  const seen = new Set(existing.map(member => String(member.user_id)));
+  const merged = [...existing];
+
+  for (const member of incoming) {
+    const id = String(member.user_id ?? '');
+    if (!id || seen.has(id)) {
+      continue;
+    }
+    seen.add(id);
+    merged.push(member);
+  }
+
+  return merged;
+};
 
 const ChannelDetailsScreen = ({ navigation, route }: any) => {
   const { colors } = useTheme();
@@ -45,6 +119,21 @@ const ChannelDetailsScreen = ({ navigation, route }: any) => {
   const [removeModalVisible, setRemoveModalVisible] = useState(false);
   const [memberSearchOpen, setMemberSearchOpen] = useState(false);
   const [memberSearchQuery, setMemberSearchQuery] = useState('');
+  const [debouncedMemberSearch, setDebouncedMemberSearch] = useState('');
+  const [members, setMembers] = useState<ChannelMember[]>([]);
+  const [membersLoading, setMembersLoading] = useState(true);
+  const [membersLoadingMore, setMembersLoadingMore] = useState(false);
+  const [membersPage, setMembersPage] = useState(1);
+  const [membersHasMore, setMembersHasMore] = useState(false);
+  const membersLoadMoreLockRef = useRef(false);
+  const membersRequestIdRef = useRef(0);
+  const membersStateRef = useRef({
+    loading: true,
+    loadingMore: false,
+    hasMore: false,
+    page: 1,
+    search: '',
+  });
   const { state, dispatch } = useDataContext();
   const { user, channelDetails, channelCallback } = state;
   const { channel_id } = route.params;
@@ -56,18 +145,132 @@ const ChannelDetailsScreen = ({ navigation, route }: any) => {
 
   const hasMemberSelection = selectedMemberIds.length > 0;
 
-  const sortedParticipants = useMemo(() => {
-    return (channelDetails?.participants || [])
+  const membersCount = useMemo(() => {
+    const count =
+      (channelDetails as any)?.user_count ??
+      channelDetails?.users_count ??
+      channelDetails?.members_count;
+    return typeof count === 'number' ? count : members.length;
+  }, [channelDetails, members.length]);
+
+  const sortedMembers = useMemo(() => {
+    return members
       .slice()
       .sort((a, b) =>
         a.user_id === user?.user_id ? -1 : b.user_id === user?.user_id ? 1 : 0,
       );
-  }, [channelDetails?.participants, user?.user_id]);
+  }, [members, user?.user_id]);
 
-  const filteredParticipants = useMemo(
-    () => filterParticipantsBySearch(sortedParticipants, memberSearchQuery),
-    [sortedParticipants, memberSearchQuery],
+  const fetchChannelMembers = useCallback(
+    async (page: number, search: string, append: boolean) => {
+      if (!channel_id) {
+        return;
+      }
+
+      const requestId = ++membersRequestIdRef.current;
+
+      if (append) {
+        setMembersLoadingMore(true);
+      } else {
+        setMembersLoading(true);
+      }
+
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(CHANNEL_USERS_PAGE_SIZE),
+      });
+      const trimmed = search.trim();
+      if (trimmed) {
+        params.set('search', trimmed);
+      }
+
+      const { data, error } = await GetRequest(
+        `/channels/${channel_id}/users?${params.toString()}`,
+      );
+
+      if (requestId !== membersRequestIdRef.current) {
+        return;
+      }
+
+      if (!error) {
+        const incoming = (data?.data || [])
+          .map(normalizeChannelMember)
+          .filter(Boolean) as ChannelMember[];
+        const pagination = data?.pagination;
+        const currentPage = Number(pagination?.current_page) || page;
+        const totalPages = Number(pagination?.total_pages) || 1;
+        const hasMore = currentPage < totalPages && incoming.length > 0;
+
+        setMembers(prev =>
+          append ? mergeChannelMembers(prev, incoming) : incoming,
+        );
+        setMembersPage(currentPage);
+        setMembersHasMore(hasMore);
+      } else if (!append) {
+        setMembers([]);
+        setMembersHasMore(false);
+      }
+
+      setMembersLoading(false);
+      setMembersLoadingMore(false);
+    },
+    [channel_id],
   );
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedMemberSearch(memberSearchQuery.trim());
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [memberSearchQuery]);
+
+  useEffect(() => {
+    setMembers([]);
+    setMembersPage(1);
+    setMembersHasMore(false);
+    setSelectedMemberIds([]);
+    fetchChannelMembers(1, debouncedMemberSearch, false);
+  }, [channel_id, channelCallback, debouncedMemberSearch, fetchChannelMembers]);
+
+  membersStateRef.current = {
+    loading: membersLoading,
+    loadingMore: membersLoadingMore,
+    hasMore: membersHasMore,
+    page: membersPage,
+    search: debouncedMemberSearch,
+  };
+
+  const loadMoreMembers = useCallback(() => {
+    const current = membersStateRef.current;
+    if (
+      membersLoadMoreLockRef.current ||
+      current.loading ||
+      current.loadingMore ||
+      !current.hasMore
+    ) {
+      return;
+    }
+
+    membersLoadMoreLockRef.current = true;
+    void fetchChannelMembers(current.page + 1, current.search, true).finally(
+      () => {
+        membersLoadMoreLockRef.current = false;
+      },
+    );
+  }, [fetchChannelMembers]);
+
+  const handleMembersScroll = (
+    event: NativeSyntheticEvent<NativeScrollEvent>,
+  ) => {
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    const distanceFromBottom =
+      contentSize.height - layoutMeasurement.height - contentOffset.y;
+
+    if (distanceFromBottom < MEMBERS_SCROLL_LOAD_THRESHOLD) {
+      loadMoreMembers();
+    }
+  };
 
   const closeMemberSearch = () => {
     setMemberSearchOpen(false);
@@ -241,6 +444,8 @@ const ChannelDetailsScreen = ({ navigation, route }: any) => {
       <ScrollView
         showsVerticalScrollIndicator={false}
         bounces={false}
+        onScroll={handleMembersScroll}
+        scrollEventThrottle={400}
         contentContainerStyle={
           hasMemberSelection ? { paddingBottom: 96 } : undefined
         }
@@ -249,7 +454,7 @@ const ChannelDetailsScreen = ({ navigation, route }: any) => {
         <View style={styles.groupInfoContainer}>
           <View style={styles.avatarStack}>
             {channelDetails?.participants
-              .slice(0, 3)
+              ?.slice(0, 3)
               .map((item, index: number) => (
                 <Image
                   key={item.user_id || index}
@@ -268,7 +473,7 @@ const ChannelDetailsScreen = ({ navigation, route }: any) => {
 
             <View style={styles.avatarBadge}>
               <AppText size={10} style={{ color: 'white' }}>
-                {channelDetails?.participants.length}
+                {channelDetails?.participants?.length}
               </AppText>
             </View>
           </View>
@@ -529,7 +734,7 @@ const ChannelDetailsScreen = ({ navigation, route }: any) => {
         <View style={styles.sectionPadding}>
           <View style={styles.sectionHeader}>
             <AppText size={13} style={{ color: colors.messageMeta }}>
-              {channelDetails?.participants?.length} members
+              {membersCount} members
             </AppText>
             {canRemovePeople && hasMemberSelection ? (
               <TouchableOpacity onPress={clearMemberSelection}>
@@ -575,92 +780,107 @@ const ChannelDetailsScreen = ({ navigation, route }: any) => {
             <AppText style={{ flex: 1, marginLeft: 15 }}>Add members</AppText>
           </TouchableOpacity>
 
-          {memberSearchQuery.trim() && filteredParticipants.length === 0 ? (
+          {membersLoading ? (
+            <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+              <ActivityIndicator color={colors.primary} />
+            </View>
+          ) : null}
+
+          {!membersLoading &&
+          memberSearchQuery.trim() &&
+          sortedMembers.length === 0 ? (
             <AppText size={13} style={{ color: colors.messageMeta }}>
               No members found
             </AppText>
           ) : null}
 
-          {filteredParticipants.map(item => {
-            const isCurrentUser = item.user_id === user?.user_id;
-            const isSelected = selectedMemberIds.includes(item.user_id);
-            const showRemoveCheckbox = canRemovePeople && !isCurrentUser;
+          {!membersLoading &&
+            sortedMembers.map(item => {
+              const isCurrentUser = item.user_id === user?.user_id;
+              const isSelected = selectedMemberIds.includes(item.user_id);
+              const showRemoveCheckbox = canRemovePeople && !isCurrentUser;
 
-            return (
-              <View key={item.user_id} style={styles.memberRow}>
-                {showRemoveCheckbox && (
-                  <TouchableOpacity
-                    style={styles.memberCheckboxBtn}
-                    onPress={() => toggleMemberSelection(item.user_id)}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <MaterialCommunityIcons
-                      name={
-                        isSelected
-                          ? 'checkbox-marked'
-                          : 'checkbox-blank-outline'
-                      }
-                      size={22}
-                      color={isSelected ? colors.primary : colors.messageMeta}
-                    />
-                  </TouchableOpacity>
-                )}
-
-                <TouchableOpacity
-                  style={{
-                    flex: 1,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                  }}
-                  onPress={() =>
-                    navigation.replace('UserDetails', {
-                      participant: item,
-                      channel_id,
-                    })
-                  }
-                >
-                  {item.avatar_url || item.default_avatar_url ? (
-                    <Image
-                      source={{
-                        uri: item.avatar_url || item.default_avatar_url,
-                      }}
-                      style={styles.memberAvatar}
-                    />
-                  ) : (
-                    <Image
-                      source={require('@/assets/images/user.png')}
-                      style={styles.memberAvatar}
-                    />
+              return (
+                <View key={item.user_id} style={styles.memberRow}>
+                  {showRemoveCheckbox && (
+                    <TouchableOpacity
+                      style={styles.memberCheckboxBtn}
+                      onPress={() => toggleMemberSelection(item.user_id)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <MaterialCommunityIcons
+                        name={
+                          isSelected
+                            ? 'checkbox-marked'
+                            : 'checkbox-blank-outline'
+                        }
+                        size={22}
+                        color={isSelected ? colors.primary : colors.messageMeta}
+                      />
+                    </TouchableOpacity>
                   )}
 
-                  <View style={styles.memberInfo}>
-                    <AppText
-                      variant="bold"
-                      style={{ textTransform: 'capitalize' }}
-                    >
-                      {isCurrentUser ? 'You' : item.username}
-                    </AppText>
-                    <AppText
-                      size={12}
-                      style={{
-                        color: item.online ? colors.online : colors.offline,
-                      }}
-                    >
-                      {item.online ? 'Active' : 'Away'}
-                    </AppText>
-                  </View>
+                  <TouchableOpacity
+                    style={{
+                      flex: 1,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                    }}
+                    onPress={() =>
+                      navigation.replace('UserDetails', {
+                        participant: item,
+                        channel_id,
+                      })
+                    }
+                  >
+                    {item.avatar_url || item.default_avatar_url ? (
+                      <Image
+                        source={{
+                          uri: item.avatar_url || item.default_avatar_url,
+                        }}
+                        style={styles.memberAvatar}
+                      />
+                    ) : (
+                      <Image
+                        source={require('@/assets/images/user.png')}
+                        style={styles.memberAvatar}
+                      />
+                    )}
 
-                  {item.is_admin && (
-                    <View style={styles.adminBadge}>
-                      <AppText size={10} style={{ color: colors.primary }}>
-                        Administrator
+                    <View style={styles.memberInfo}>
+                      <AppText
+                        variant="bold"
+                        style={{ textTransform: 'capitalize' }}
+                      >
+                        {isCurrentUser ? 'You' : item.username}
+                      </AppText>
+                      <AppText
+                        size={12}
+                        style={{
+                          color: item.online ? colors.online : colors.offline,
+                        }}
+                      >
+                        {item.online ? 'Active' : 'Away'}
                       </AppText>
                     </View>
-                  )}
-                </TouchableOpacity>
-              </View>
-            );
-          })}
+
+                    {item.is_admin && (
+                      <View style={styles.adminBadge}>
+                        <AppText size={10} style={{ color: colors.primary }}>
+                          Administrator
+                        </AppText>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+
+          {membersLoadingMore ? (
+            <View style={{ paddingVertical: 16, alignItems: 'center' }}>
+              <ActivityIndicator color={colors.primary} />
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.divider} />

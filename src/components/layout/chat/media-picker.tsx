@@ -1,4 +1,10 @@
-import React, { forwardRef, useCallback, useMemo, useState } from 'react';
+import React, {
+  forwardRef,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   View,
   Image,
@@ -105,12 +111,13 @@ export const MediaPickerSheet = forwardRef<
 >((props, ref) => {
   const { colors } = useTheme();
   const styles = useMemo(() => createChatMediaStyles(colors), [colors]);
-  const { setPendingMedia, setIsEditorVisible } = props;
+  const { setPendingMedia, setIsEditorVisible, onClose } = props;
   const [galleryPhotos, setGalleryPhotos] = useState<GalleryItem[]>([]);
   const [hasLoadedGallery, setHasLoadedGallery] = useState(false);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const { uploadFiles } = useFileUpload();
   const { dispatch } = useDataContext();
+  const hasOpenedRef = useRef(false);
 
   const fetchPhotos = useCallback(async () => {
     try {
@@ -389,7 +396,11 @@ export const MediaPickerSheet = forwardRef<
       paddingBottom={normalize(110)}
       onChange={index => {
         if (index >= 0) {
+          hasOpenedRef.current = true;
           ensureGalleryLoaded();
+        } else if (hasOpenedRef.current) {
+          hasOpenedRef.current = false;
+          onClose?.();
         }
       }}
     >

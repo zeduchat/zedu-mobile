@@ -26,6 +26,7 @@ import {
 import { isVoiceMessageMedia } from '@/utils/voice-message';
 import { isVideoFile } from '@/utils/file-helpers';
 import ReactionDetailsSheet from './reaction-details';
+import { PinnedMessageBanner } from './pinned-message-banner';
 
 const { width } = Dimensions.get('window');
 
@@ -250,7 +251,11 @@ const MessageItem = ({
   );
 
   return (
-    <View>
+    <View
+      style={
+        item.is_pinned ? { backgroundColor: colors.lightYellow } : undefined
+      }
+    >
       {showDateHeader && (
         <View style={styles.dateHeader}>
           <AppText style={styles.dateText}>
@@ -263,6 +268,8 @@ const MessageItem = ({
           </AppText>
         </View>
       )}
+
+      <PinnedMessageBanner item={item} />
 
       <TouchableOpacity
         activeOpacity={0.5}

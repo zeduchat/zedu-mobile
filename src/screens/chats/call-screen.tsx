@@ -88,7 +88,7 @@ const CallScreen = () => {
   };
 
   return (
-    <Container color={colors.secondary} dark>
+    <Container color={colors.secondary} dark safeBottom>
       <ImageBackground
         source={require('@/assets/images/call-bg.png')}
         style={styles.container}

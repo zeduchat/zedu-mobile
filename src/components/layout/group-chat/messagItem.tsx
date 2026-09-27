@@ -26,6 +26,7 @@ import {
 } from '../chat/chat-file-attachment';
 import { isVoiceMessageMedia } from '@/utils/voice-message';
 import { isVideoFile } from '@/utils/file-helpers';
+import { PinnedMessageBanner } from '../chat/pinned-message-banner';
 
 const { width } = Dimensions.get('window');
 
@@ -261,7 +262,11 @@ const MessageItem = ({
   //
 
   return (
-    <View>
+    <View
+      style={
+        item.is_pinned ? { backgroundColor: colors.lightYellow } : undefined
+      }
+    >
       {showDateHeader && (
         <View style={styles.dateHeader}>
           <AppText style={styles.dateText}>
@@ -274,6 +279,8 @@ const MessageItem = ({
           </AppText>
         </View>
       )}
+
+      <PinnedMessageBanner item={item} />
 
       <View
         style={[

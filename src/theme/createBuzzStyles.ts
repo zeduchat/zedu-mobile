@@ -945,7 +945,7 @@ export function createBuzzCallControlStyles(colors: ThemeColors) {
     bottomContainer: {
       position: 'relative',
       paddingHorizontal: 15,
-      paddingBottom: 30,
+      paddingBottom: Platform.OS === 'ios' ? 30 : 12,
     },
     controlBar: {
       flexDirection: 'row',
@@ -1343,7 +1343,7 @@ export function createBuzzSidebarStyles(colors: ThemeColors) {
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
       padding: 16,
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
     },
     typingIndicator: {
       flexDirection: 'row',

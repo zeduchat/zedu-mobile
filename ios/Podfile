@@ -36,6 +36,39 @@ target 'Zedu' do
       # :ccache_enabled => true
     )
 
+    # pnpm installs @sayem314/react-native-keep-awake via symlink; RN codegen
+    # skips symlink dirs and emits empty NativeKCKeepAwakeSpec headers.
+    # Regenerate from the package realpath after post_install, and again as a
+    # build-phase script so Xcode's codegen step cannot overwrite empties.
+    keep_awake_script = "#{Pod::Config.instance.installation_root}/../scripts/generate-keep-awake-ios-codegen.js"
+    system('node', keep_awake_script)
+
+    installer.pods_project.targets.each do |target|
+      next unless target.name == 'ReactCodegen'
+
+      # Avoid duplicate phases on repeated pod install
+      target.build_phases.each do |phase|
+        if phase.respond_to?(:name) && phase.name == 'Generate KeepAwake Codegen (pnpm)'
+          target.build_phases.delete(phase)
+        end
+      end
+
+      phase = target.new_shell_script_build_phase('Generate KeepAwake Codegen (pnpm)')
+      phase.shell_script = <<-SCRIPT
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+node "${PODS_ROOT}/../../scripts/generate-keep-awake-ios-codegen.js"
+SCRIPT
+
+      # Run after "[CP-User] Generate Specs" so we overwrite empty symlink stubs.
+      generate_specs_index = target.build_phases.find_index do |p|
+        p.respond_to?(:name) && p.name == '[CP-User] Generate Specs'
+      end
+      if generate_specs_index
+        target.build_phases.move(phase, generate_specs_index + 1)
+      end
+    end
+
     installer.aggregate_targets.each do |aggregate_target|
       aggregate_target.user_project.native_targets.each do |native_target|
         next unless native_target.name == 'ScreenSharing'
@@ -44,13 +77,13 @@ target 'Zedu' do
           build_config.build_settings['APPLICATION_EXTENSION_API_ONLY'] = 'YES'
           build_config.build_settings['FRAMEWORK_SEARCH_PATHS'] = [
             '$(inherited)',
-            '"${SRCROOT}/Pods/AgoraVideo_Special_iOS/AgoraReplayKitExtension.xcframework/ios-arm64"',
-            '"${SRCROOT}/Pods/AgoraVideo_Special_iOS/AgoraReplayKitExtension.xcframework/ios-arm64_x86_64-simulator"',
+            '"${SRCROOT}/Pods/AgoraRtcEngine_iOS/AgoraReplayKitExtension.xcframework/ios-arm64"',
+            '"${SRCROOT}/Pods/AgoraRtcEngine_iOS/AgoraReplayKitExtension.xcframework/ios-arm64_x86_64-simulator"',
           ]
           build_config.build_settings['HEADER_SEARCH_PATHS'] = [
             '$(inherited)',
-            '"${SRCROOT}/Pods/AgoraVideo_Special_iOS/AgoraReplayKitExtension.xcframework/ios-arm64/AgoraReplayKitExtension.framework/Headers"',
-            '"${SRCROOT}/Pods/AgoraVideo_Special_iOS/AgoraReplayKitExtension.xcframework/ios-arm64_x86_64-simulator/AgoraReplayKitExtension.framework/Headers"',
+            '"${SRCROOT}/Pods/AgoraRtcEngine_iOS/AgoraReplayKitExtension.xcframework/ios-arm64/AgoraReplayKitExtension.framework/Headers"',
+            '"${SRCROOT}/Pods/AgoraRtcEngine_iOS/AgoraReplayKitExtension.xcframework/ios-arm64_x86_64-simulator/AgoraReplayKitExtension.framework/Headers"',
           ]
           build_config.build_settings['OTHER_LDFLAGS'] = [
             '$(inherited)',

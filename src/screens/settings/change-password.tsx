@@ -66,7 +66,7 @@ const ChangePasswordScreen = ({ navigation }: any) => {
     passwords.oldPassword && passwords.newPassword && passwords.confirmPassword;
 
   return (
-    <Container>
+    <Container safeBottom>
       <View style={styles.stackHeaderCompact}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}

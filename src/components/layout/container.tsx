@@ -4,16 +4,27 @@ import { s } from 'react-native-size-matters';
 import { AppText } from '../ui/text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDataContext } from '@/store/useDataContext';
-import { isAndroid15Plus, statusBarTopPadding } from '@/utils/status-bar-inset';
+import {
+  isAndroid15Plus,
+  navigationBarBottomPadding,
+  statusBarTopPadding,
+} from '@/utils/status-bar-inset';
 import { ACTIONS } from '@/store/types';
 import { useTheme } from '@/theme/ThemeProvider';
 import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
+import { normalize } from '@/utils/normalize';
 
 interface Props {
   children: any;
   /** Brand header band with light status bar content. */
   dark?: boolean;
   color?: string;
+  /**
+   * Pad above the Android system navigation bar (edge-to-edge).
+   * Defaults to false — enable on full-screen stack screens with bottom CTAs.
+   * Leave off for tab roots (tab bar already insets) and chat (composer handles it).
+   */
+  safeBottom?: boolean;
 }
 
 const Container = (props: Props) => {
@@ -21,6 +32,14 @@ const Container = (props: Props) => {
   const { state, dispatch } = useDataContext();
   const insets = useSafeAreaInsets();
   const topPadding = statusBarTopPadding(insets.top);
+  const safeBottom = props.safeBottom === true;
+  const bottomPadding =
+    safeBottom && Platform.OS === 'android'
+      ? navigationBarBottomPadding(
+          insets.bottom,
+          isAndroid15Plus ? normalize(16) : 0,
+        )
+      : 0;
   const toastTopPadding =
     Platform.OS === 'ios' ? 60 : isAndroid15Plus ? insets.top + 15 : 30;
 
@@ -66,6 +85,11 @@ const Container = (props: Props) => {
   const headerBackground = props.dark
     ? colors.secondary
     : props.color ?? colors.statusBarBackground;
+
+  const contentBackground =
+    props.dark && safeBottom
+      ? props.color ?? colors.secondary
+      : colors.background;
 
   const statusBarBackground = state?.error
     ? colors.error
@@ -137,7 +161,13 @@ const Container = (props: Props) => {
         </Animated.View>
       )}
 
-      <View style={{ backgroundColor: colors.background, flex: 1 }}>
+      <View
+        style={{
+          backgroundColor: contentBackground,
+          flex: 1,
+          paddingBottom: bottomPadding,
+        }}
+      >
         {props.children}
       </View>
     </View>

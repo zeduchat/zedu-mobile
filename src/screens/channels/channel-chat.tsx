@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   Keyboard,
   ActivityIndicator,
+  InteractionManager,
 } from 'react-native';
 import { AppText } from '@/components/ui/text';
 import Container from '@/components/layout/container';
@@ -47,6 +48,9 @@ import { ShowNotify } from '@/components/ui/toast';
 import buzzService from '@/services/buzz.service';
 import ChatBackground from '@/components/layout/chat/chat-background';
 import { useMessageDraft } from '@/hooks/useMessageDraft';
+import { RestrictedChannelBanner } from '@/components/layout/channels/restricted-channel';
+import { PinnedMessagesSheet } from '@/components/layout/chat/pinned-messages-sheet';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const ChannelChatScreen = ({ navigation, route }: any) => {
   const { colors } = useTheme();
@@ -69,6 +73,9 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
   const [mentionsMetadata, setMentionsMetadata] = useState<any[]>([]);
   const [isEditorVisible, setIsEditorVisible] = useState(false);
   const [joinLoading, setJoinLoading] = useState(false);
+  const [pinnedSheetVisible, setPinnedSheetVisible] = useState(false);
+  const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
+  const [mentionSheetUser, setMentionSheetUser] = useState<any | null>(null);
   const { state, dispatch } = useDataContext();
   const { handleTyping } = useTyping(state.channelSubscription);
   const {
@@ -140,9 +147,28 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
       (p: any) => p.user_id === userId,
     );
     if (found) {
-      mentionUserSheetRef.current?.open(found);
+      setMentionSheetUser(found);
     }
   };
+
+  const listFooter = useCallback(() => {
+    if (!isFetchingMore) return null;
+    return (
+      <ActivityIndicator
+        size="small"
+        color={colors.primary}
+        style={{ margin: 10 }}
+      />
+    );
+  }, [isFetchingMore, colors.primary]);
+
+  useEffect(() => {
+    if (!mediaPickerOpen) return;
+    const task = InteractionManager.runAfterInteractions(() => {
+      pickerSheetRef.current?.expand();
+    });
+    return () => task.cancel();
+  }, [mediaPickerOpen]);
 
   const handleVideoCall = async () => {
     const activeBuzzData = state?.buzzData;
@@ -353,7 +379,7 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
   };
 
   const handleMediaPicker = () => {
-    pickerSheetRef.current?.expand();
+    setMediaPickerOpen(true);
   };
 
   const handleSendMessage = async (content: string, medias: any[] = []) => {
@@ -584,23 +610,35 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
         </TouchableOpacity>
 
         {channelAccess && (
-          <TouchableOpacity
-            style={{ padding: 5, borderRadius: 5, marginRight: 10 }}
-            onPress={activeBuzz ? handleJoinCall : handleVideoCall}
-          >
-            {callLoading ? (
-              <ActivityIndicator color={colors.primary} />
-            ) : (
-              <View style={styles.videoIconWrap}>
-                <Feather
-                  name="video"
-                  size={22}
-                  color={activeBuzz ? colors.online : colors.iconDefault}
-                />
-                {activeBuzz && <View style={styles.activeBuzzDot} />}
-              </View>
-            )}
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              style={{ padding: 5, borderRadius: 5, marginRight: 4 }}
+              onPress={() => setPinnedSheetVisible(true)}
+            >
+              <MaterialCommunityIcons
+                name="pin"
+                size={20}
+                color={colors.iconDefault}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ padding: 5, borderRadius: 5, marginRight: 10 }}
+              onPress={activeBuzz ? handleJoinCall : handleVideoCall}
+            >
+              {callLoading ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <View style={styles.videoIconWrap}>
+                  <Feather
+                    name="video"
+                    size={22}
+                    color={activeBuzz ? colors.online : colors.iconDefault}
+                  />
+                  {activeBuzz && <View style={styles.activeBuzzDot} />}
+                </View>
+              )}
+            </TouchableOpacity>
+          </>
         )}
       </View>
 
@@ -640,15 +678,7 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
           showsVerticalScrollIndicator={false}
           onEndReached={loadMore}
           onEndReachedThreshold={0.1}
-          ListFooterComponent={() =>
-            isFetchingMore ? (
-              <ActivityIndicator
-                size="small"
-                color={colors.primary}
-                style={{ margin: 10 }}
-              />
-            ) : null
-          }
+          ListFooterComponent={listFooter}
         />
       )}
 
@@ -672,6 +702,9 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
               )}
             </TouchableOpacity>
           </View>
+        ) : String(channelDetails?.channels_id || '') ===
+            String(channel_id || '') && channelDetails?.is_restricted ? (
+          <RestrictedChannelBanner />
         ) : (
           <>
             {mentionState && (
@@ -701,7 +734,10 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
               onOpenEmoji={() => setIsEmojiOpen(true)}
               onCloseEmoji={() => setIsEmojiOpen(false)}
               isEmojiOpen={isEmojiOpen}
-              onFocus={() => pickerSheetRef.current?.close()}
+              onFocus={() => {
+                pickerSheetRef.current?.close();
+                setMediaPickerOpen(false);
+              }}
               onMentionTrigger={handleMentionTrigger}
               onMentionCancel={() => {
                 setMentionState(null);
@@ -740,11 +776,14 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
         />
       )}
 
-      <MediaPickerSheet
-        ref={pickerSheetRef}
-        setPendingMedia={setPendingMedia}
-        setIsEditorVisible={setIsEditorVisible}
-      />
+      {mediaPickerOpen && (
+        <MediaPickerSheet
+          ref={pickerSheetRef}
+          setPendingMedia={setPendingMedia}
+          setIsEditorVisible={setIsEditorVisible}
+          onClose={() => setMediaPickerOpen(false)}
+        />
+      )}
 
       {pendingMedia && (
         <MediaEditorModal
@@ -758,7 +797,20 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
         />
       )}
 
-      <MentionUserBottomSheet ref={mentionUserSheetRef} />
+      {mentionSheetUser && (
+        <MentionUserBottomSheet
+          ref={mentionUserSheetRef}
+          user={mentionSheetUser}
+          onClose={() => setMentionSheetUser(null)}
+        />
+      )}
+
+      <PinnedMessagesSheet
+        visible={pinnedSheetVisible}
+        onClose={() => setPinnedSheetVisible(false)}
+        channelId={channel_id as string}
+        scope="channel"
+      />
     </Container>
   );
 };
