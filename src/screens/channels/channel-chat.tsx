@@ -49,8 +49,21 @@ import buzzService from '@/services/buzz.service';
 import ChatBackground from '@/components/layout/chat/chat-background';
 import { useMessageDraft } from '@/hooks/useMessageDraft';
 import { RestrictedChannelBanner } from '@/components/layout/channels/restricted-channel';
-import { PinnedMessagesSheet } from '@/components/layout/chat/pinned-messages-sheet';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { StartBuzzConfirmationModal } from '@/components/layout/chat/start-buzz-confirmation-modal';
+import {
+  cancelPinnedScrollJumps,
+  consumePendingPinJump,
+  createScrollToIndexFailedHandler,
+  ensurePinnedThreadLoaded,
+  findPinnedMessageIndex,
+  findThreadIndex,
+  getPinnedJumpTarget,
+  recordChatItemHeight,
+  runAfterPinNavReturn,
+  scrollChatToIndex,
+} from '@/utils/scroll-to-pinned-message';
+import type { ResolvedPin } from '@/utils/resolve-pinned-messages';
 
 const ChannelChatScreen = ({ navigation, route }: any) => {
   const { colors } = useTheme();
@@ -60,6 +73,8 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
   const flatListRef = useRef<FlatList>(null);
   const actionSheetRef = useRef<any>(null);
   const pickerSheetRef = useRef<any>(null);
+  const pendingJumpIdRef = useRef<string | null>(null);
+  const pinJumpLockRef = useRef(false);
   const [selectedMsg, setSelectedMsg] = useState<Channel | null>(null);
   const [pendingMedia, setPendingMedia] = useState<{
     uri: string;
@@ -73,9 +88,9 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
   const [mentionsMetadata, setMentionsMetadata] = useState<any[]>([]);
   const [isEditorVisible, setIsEditorVisible] = useState(false);
   const [joinLoading, setJoinLoading] = useState(false);
-  const [pinnedSheetVisible, setPinnedSheetVisible] = useState(false);
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
   const [mentionSheetUser, setMentionSheetUser] = useState<any | null>(null);
+  const [buzzConfirmVisible, setBuzzConfirmVisible] = useState(false);
   const { state, dispatch } = useDataContext();
   const { handleTyping } = useTyping(state.channelSubscription);
   const {
@@ -92,6 +107,7 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
   const [channelAccess, setChannelAccess] = useState(channel?.access);
   const [onEdit, setOnEdit] = useState(false);
   const [editMsgId, setEditMsgId] = useState<string | null>(null);
+  const [highlightMsgId, setHighlightMsgId] = useState<string | null>(null);
   const [callLoading, setCallLoading] = useState(false);
   const [returnLoading, setReturnLoading] = useState(true);
 
@@ -184,15 +200,17 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
       return;
     }
 
+    setBuzzConfirmVisible(false);
+    setCallLoading(true);
+
     try {
       const result = await buzzService.createChannelBuzz(channel_id as string);
 
       if (result.error || !result.data) {
         ShowNotify('Error', result.error || 'Failed to create call');
+        setCallLoading(false);
         return;
       }
-
-      setCallLoading(true);
 
       const buzz = result.data;
 
@@ -200,6 +218,7 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
 
       if (joinResult.error || !joinResult.data) {
         ShowNotify('Error', joinResult.error || 'Failed to join call');
+        setCallLoading(false);
         return;
       }
 
@@ -243,6 +262,15 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
       ShowNotify('Error', 'Failed to start call');
       setCallLoading(false);
     }
+  };
+
+  const requestStartBuzz = () => {
+    const activeBuzzData = state?.buzzData;
+    if (state?.isCallMinimized && activeBuzzData?.buzz_code) {
+      void handleVideoCall();
+      return;
+    }
+    setBuzzConfirmVisible(true);
   };
 
   const handleJoinCall = async () => {
@@ -529,6 +557,145 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
     setSelectedMsg(null);
   };
 
+  const handleJumpToPinned = useCallback(
+    async (pin: ResolvedPin) => {
+      const target = getPinnedJumpTarget(pin);
+
+      if (target.isReply) {
+        const parent =
+          channelsChat.find(
+            (msg: any) => String(msg.thread_id) === String(target.threadId),
+          ) ||
+          (target.threadId
+            ? {
+                ...(pin.message || {}),
+                thread_id: target.threadId,
+                channels_id: channel_id,
+              }
+            : null);
+
+        if (!parent?.thread_id) {
+          ShowNotify('Error', 'Could not open this pinned reply');
+          return;
+        }
+
+        dispatch({ type: ACTIONS.SELECTED_MSG, payload: parent });
+        dispatch({
+          type: ACTIONS.REPLY_CHAT,
+          payload: { data: (parent as any).preview_reply || [], page: 1 },
+        });
+        navigation.navigate('ChannelStack', {
+          screen: 'ChannelThread',
+          params: {
+            thread_id: parent.thread_id,
+            channel_id: channel_id,
+            highlight_message_id: target.id,
+          },
+        });
+        return;
+      }
+
+      const jumpId = target.threadId || pin.pinId;
+      if (!jumpId) {
+        ShowNotify('Error', 'Could not find that pinned message');
+        return;
+      }
+
+      // Reset lock so this tap can jump exactly once.
+      pinJumpLockRef.current = false;
+      pendingJumpIdRef.current = jumpId;
+      setHighlightMsgId(jumpId);
+
+      const performJump = (index: number) => {
+        if (pinJumpLockRef.current || index < 0) return;
+        pinJumpLockRef.current = true;
+        pendingJumpIdRef.current = null;
+        scrollChatToIndex(flatListRef, index, channelsChat);
+        setTimeout(() => setHighlightMsgId(null), 2500);
+      };
+
+      let index = findPinnedMessageIndex(channelsChat, pin);
+
+      if (index < 0) {
+        index = await ensurePinnedThreadLoaded({
+          messages: channelsChat,
+          pin,
+          channelId: String(channel_id),
+          scope: 'channel',
+          onPageLoaded: (page, data) => {
+            dispatch({
+              type: ACTIONS.CHANNELS_CHAT,
+              payload: { data, page },
+            });
+          },
+        });
+      }
+
+      if (index < 0 && pin.message?.thread_id) {
+        dispatch({
+          type: ACTIONS.CHANNELS_CHAT,
+          payload: {
+            data: [pin.message],
+            page: 2,
+          },
+        });
+        pendingJumpIdRef.current = String(pin.message.thread_id);
+        return;
+      }
+
+      if (index >= 0) {
+        performJump(index);
+        return;
+      }
+
+      setTimeout(() => {
+        if (pendingJumpIdRef.current === jumpId) {
+          pendingJumpIdRef.current = null;
+          setHighlightMsgId(null);
+          ShowNotify('Error', 'Could not find that pinned message');
+        }
+      }, 2000);
+    },
+    [channelsChat, channel_id, dispatch, navigation],
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      const pin = consumePendingPinJump();
+      if (!pin) return undefined;
+
+      runAfterPinNavReturn(() => {
+        handleJumpToPinned(pin);
+      });
+
+      return undefined;
+    }, [handleJumpToPinned]),
+  );
+
+  useEffect(() => {
+    const jumpId = pendingJumpIdRef.current;
+    if (!jumpId || pinJumpLockRef.current || !channelsChat?.length) return;
+
+    const index = findThreadIndex(channelsChat, jumpId);
+    if (index < 0) return;
+
+    pinJumpLockRef.current = true;
+    pendingJumpIdRef.current = null;
+    scrollChatToIndex(flatListRef, index, channelsChat);
+    setTimeout(() => setHighlightMsgId(null), 2500);
+  }, [channelsChat]);
+
+  const cancelPinnedJumpFollow = useCallback(() => {
+    pendingJumpIdRef.current = null;
+    pinJumpLockRef.current = true;
+    cancelPinnedScrollJumps();
+  }, []);
+
+  const handleScrollToIndexFailed = useMemo(
+    () => createScrollToIndexFailedHandler(flatListRef),
+    [],
+  );
+
   const handleLongPress = (item: Channel) => {
     setSelectedMsg(item);
   };
@@ -613,7 +780,12 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
           <>
             <TouchableOpacity
               style={{ padding: 5, borderRadius: 5, marginRight: 4 }}
-              onPress={() => setPinnedSheetVisible(true)}
+              onPress={() =>
+                navigation.navigate('PinnedMessages', {
+                  channel_id: channel_id as string,
+                  scope: 'channel',
+                })
+              }
             >
               <MaterialCommunityIcons
                 name="pin"
@@ -623,7 +795,7 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
             </TouchableOpacity>
             <TouchableOpacity
               style={{ padding: 5, borderRadius: 5, marginRight: 10 }}
-              onPress={activeBuzz ? handleJoinCall : handleVideoCall}
+              onPress={activeBuzz ? handleJoinCall : requestStartBuzz}
             >
               {callLoading ? (
                 <ActivityIndicator color={colors.primary} />
@@ -650,11 +822,21 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
           data={channelsChat}
           inverted
           keyExtractor={(item, index) => `${item.thread_id}-${index}`}
+          extraData={[highlightMsgId, editMsgId, onEdit]}
+          onScrollToIndexFailed={handleScrollToIndexFailed}
+          onScrollBeginDrag={cancelPinnedJumpFollow}
           renderItem={({ item, index }) => (
             <View
+              onLayout={e =>
+                recordChatItemHeight(
+                  item.thread_id,
+                  e.nativeEvent.layout.height,
+                )
+              }
               style={{
                 backgroundColor:
-                  onEdit && editMsgId === item.thread_id
+                  (onEdit && editMsgId === item.thread_id) ||
+                  highlightMsgId === item.thread_id
                     ? colors.chatHighlight
                     : 'transparent',
               }}
@@ -782,6 +964,7 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
           setPendingMedia={setPendingMedia}
           setIsEditorVisible={setIsEditorVisible}
           onClose={() => setMediaPickerOpen(false)}
+          startOpen
         />
       )}
 
@@ -805,11 +988,18 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
         />
       )}
 
-      <PinnedMessagesSheet
-        visible={pinnedSheetVisible}
-        onClose={() => setPinnedSheetVisible(false)}
-        channelId={channel_id as string}
+      <StartBuzzConfirmationModal
+        visible={buzzConfirmVisible}
+        loading={callLoading}
         scope="channel"
+        contextName={channel?.name || channelDetails?.name}
+        memberCount={
+          channel?.members_count || channel?.users_count || undefined
+        }
+        onClose={() => {
+          if (!callLoading) setBuzzConfirmVisible(false);
+        }}
+        onConfirm={handleVideoCall}
       />
     </Container>
   );

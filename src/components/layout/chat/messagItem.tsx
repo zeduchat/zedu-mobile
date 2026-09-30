@@ -37,6 +37,7 @@ const MessageItem = ({
   onLongPress,
   editMsgId,
   onEdit,
+  onMentionUser,
 }: any) => {
   const { colors } = useTheme();
   const styles = useMemo(
@@ -247,6 +248,7 @@ const MessageItem = ({
       html={item.message}
       media={item.media}
       textStyle={styles.messageText}
+      onMentionUser={onMentionUser}
     />
   );
 

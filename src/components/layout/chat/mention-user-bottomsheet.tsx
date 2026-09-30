@@ -6,12 +6,7 @@ import React, {
   useState,
   useRef,
 } from 'react';
-import {
-  View,
-  TouchableOpacity,
-  ActivityIndicator,
-  InteractionManager,
-} from 'react-native';
+import { View, TouchableOpacity, ActivityIndicator } from 'react-native';
 import AppBottomSheet, {
   AppBottomSheetRef,
 } from '@/components/ui/bottom-sheet';
@@ -86,14 +81,11 @@ const MentionUserBottomSheet = forwardRef<
     },
   }));
 
-  // Conditional mount (user prop set): expand after interactions.
-  // Always-mounted parents still open via ref.open().
+  // When parent mounts this sheet with a user, open immediately via startOpen.
+  // Imperative open() still works for always-mounted parents.
   useEffect(() => {
     if (!userProp) return;
-    const task = InteractionManager.runAfterInteractions(() => {
-      bottomSheetRef.current?.expand();
-    });
-    return () => task.cancel();
+    hasOpenedRef.current = true;
   }, [userProp]);
 
   const handleNavigate = async () => {
@@ -150,6 +142,7 @@ const MentionUserBottomSheet = forwardRef<
       backgroundStyle={styles.sheetBackground}
       handleIndicatorStyle={styles.indicator}
       paddingBottom={100}
+      startOpen={Boolean(userProp)}
       onChange={index => {
         if (index >= 0) {
           hasOpenedRef.current = true;

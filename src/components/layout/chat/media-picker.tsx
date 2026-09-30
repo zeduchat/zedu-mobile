@@ -1,6 +1,8 @@
 import React, {
   forwardRef,
   useCallback,
+  useEffect,
+  useImperativeHandle,
   useMemo,
   useRef,
   useState,
@@ -52,6 +54,8 @@ interface MediaPickerSheetProps {
   media?: any;
   setPendingMedia: any;
   setIsEditorVisible: any;
+  /** When parent mounts this sheet only while open. */
+  startOpen?: boolean;
 }
 
 type GalleryItem = {
@@ -111,13 +115,37 @@ export const MediaPickerSheet = forwardRef<
 >((props, ref) => {
   const { colors } = useTheme();
   const styles = useMemo(() => createChatMediaStyles(colors), [colors]);
-  const { setPendingMedia, setIsEditorVisible, onClose } = props;
+  const {
+    setPendingMedia,
+    setIsEditorVisible,
+    onClose,
+    startOpen = false,
+  } = props;
   const [galleryPhotos, setGalleryPhotos] = useState<GalleryItem[]>([]);
   const [hasLoadedGallery, setHasLoadedGallery] = useState(false);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const { uploadFiles } = useFileUpload();
   const { dispatch } = useDataContext();
+  // Tracks a real open so dismiss can call onClose (needed for conditional mount).
+  // Do not init from startOpen — gorhom may emit -1 on mount before the sheet settles.
   const hasOpenedRef = useRef(false);
+  const sheetRef = useRef<AppBottomSheetRef>(null);
+
+  useImperativeHandle(ref, () => ({
+    expand: () => {
+      hasOpenedRef.current = true;
+      sheetRef.current?.expand();
+    },
+    close: () => {
+      sheetRef.current?.close();
+    },
+    snapToIndex: (index: number) => {
+      if (index >= 0) {
+        hasOpenedRef.current = true;
+      }
+      sheetRef.current?.snapToIndex(index);
+    },
+  }));
 
   const fetchPhotos = useCallback(async () => {
     try {
@@ -142,6 +170,14 @@ export const MediaPickerSheet = forwardRef<
     if (hasLoadedGallery) return;
     await fetchPhotos();
   }, [fetchPhotos, hasLoadedGallery]);
+
+  useEffect(() => {
+    if (startOpen) {
+      // Mark open after mount so an initial onChange(-1) does not clear parent state.
+      hasOpenedRef.current = true;
+      ensureGalleryLoaded();
+    }
+  }, [startOpen, ensureGalleryLoaded]);
 
   const toggleImageSelection = (imageId: string) => {
     setSelectedImages(prev => {
@@ -178,17 +214,13 @@ export const MediaPickerSheet = forwardRef<
     });
     setIsEditorVisible(true);
     setSelectedImages(new Set());
-    if (ref && 'current' in ref) {
-      ref.current?.close();
-    }
+    sheetRef.current?.close();
   };
 
   const openEditor = (uri: string, type: any, name?: string, size?: string) => {
     setPendingMedia({ uri, type, name, size });
     setIsEditorVisible(true);
-    if (ref && 'current' in ref) {
-      ref.current?.close();
-    }
+    sheetRef.current?.close();
   };
 
   const handleGalleryItemPress = async (item: GalleryItem) => {
@@ -337,9 +369,7 @@ export const MediaPickerSheet = forwardRef<
       isMultiple: images.length > 1,
     });
     setIsEditorVisible(true);
-    if (ref && 'current' in ref) {
-      ref.current?.close();
-    }
+    sheetRef.current?.close();
   };
 
   const handleDocument = async () => {
@@ -390,10 +420,11 @@ export const MediaPickerSheet = forwardRef<
 
   return (
     <AppBottomSheet
-      ref={ref}
+      ref={sheetRef}
       snapPoints={['67%']}
       backgroundStyle={styles.sheetBackground}
       paddingBottom={normalize(110)}
+      startOpen={startOpen}
       onChange={index => {
         if (index >= 0) {
           hasOpenedRef.current = true;

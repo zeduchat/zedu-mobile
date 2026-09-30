@@ -376,6 +376,7 @@ export const MessageAction = forwardRef<
         ref={ref}
         snapPoints={mode === 'actions' ? ['65%'] : ['40%']}
         paddingBottom={normalize(110)}
+        startOpen
         onClose={() => {
           setMode('actions');
           if (!isForwardOpen) {

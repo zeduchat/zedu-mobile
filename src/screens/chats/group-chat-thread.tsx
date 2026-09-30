@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { View, FlatList, Keyboard, ActivityIndicator } from 'react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { createChatDetailStyles } from '@/theme/createScreenStyles';
@@ -33,6 +33,11 @@ import MentionUserBottomSheet, {
 import { MentionSheet } from '@/components/layout/chat/mention-sheet';
 import { buildMentionHtmlTag } from '@/utils/message-text';
 import ThreadScreenHeader from '@/components/layout/chat/thread-screen-header';
+import {
+  createScrollToIndexFailedHandler,
+  recordChatItemHeight,
+  scrollChatToIndex,
+} from '@/utils/scroll-to-pinned-message';
 
 const GroupChatThreadScreen = ({ navigation, route }: any) => {
   const { colors } = useTheme();
@@ -45,6 +50,7 @@ const GroupChatThreadScreen = ({ navigation, route }: any) => {
   } | null>(null);
   const [mentionsMetadata, setMentionsMetadata] = useState<any[]>([]);
   const flatListRef = useRef<FlatList>(null);
+  const hasScrolledToHighlight = useRef(false);
   const actionSheetRef = useRef<any>(null);
   const pickerSheetRef = useRef<any>(null);
   const mentionUserSheetRef = useRef<MentionUserBottomSheetRef>(null);
@@ -54,6 +60,7 @@ const GroupChatThreadScreen = ({ navigation, route }: any) => {
     type: 'image' | 'file';
   } | null>(null);
   const [isEditorVisible, setIsEditorVisible] = useState(false);
+  const [highlightMsgId, setHighlightMsgId] = useState<string | null>(null);
   const { state, dispatch } = useDataContext();
   const { handleTyping } = useTyping(state.replySubscription);
   const {
@@ -63,7 +70,7 @@ const GroupChatThreadScreen = ({ navigation, route }: any) => {
     channel: _channel,
     participant,
   } = state;
-  const { thread_id, channel_id } = route.params;
+  const { thread_id, channel_id, highlight_message_id } = route.params;
 
   const { loadMore, isFetchingMore } = UseReplyChat({
     channel_id: channel_id as string,
@@ -73,6 +80,33 @@ const GroupChatThreadScreen = ({ navigation, route }: any) => {
   const { uploadFiles, clearUploads } = useFileUpload();
 
   const [isVoiceUploading, setIsVoiceUploading] = useState(false);
+
+  const handleScrollToIndexFailed = useMemo(
+    () => createScrollToIndexFailedHandler(flatListRef),
+    [],
+  );
+
+  useEffect(() => {
+    if (
+      !highlight_message_id ||
+      hasScrolledToHighlight.current ||
+      !replyChat?.length
+    ) {
+      return;
+    }
+
+    const index = replyChat.findIndex(
+      (msg: any) =>
+        String(msg.id ?? msg.message_id) === String(highlight_message_id),
+    );
+    if (index < 0) return;
+
+    hasScrolledToHighlight.current = true;
+    setHighlightMsgId(String(highlight_message_id));
+    scrollChatToIndex(flatListRef, index, replyChat);
+    const timer = setTimeout(() => setHighlightMsgId(null), 2500);
+    return () => clearTimeout(timer);
+  }, [highlight_message_id, replyChat]);
 
   const handleVoiceRecorded = async (uri: string) => {
     setIsVoiceUploading(true);
@@ -270,21 +304,38 @@ const GroupChatThreadScreen = ({ navigation, route }: any) => {
         data={replyChat}
         inverted
         keyExtractor={item => String(item.id ?? item.message_id)}
-        extraData={replyChat}
+        extraData={[replyChat, highlightMsgId]}
+        onScrollToIndexFailed={handleScrollToIndexFailed}
         renderItem={({ item, index }) => (
-          <ThreadMessageItem
-            item={{
-              ...item,
-              id: item.id ?? item.message_id,
-              text: item.message || '',
-              message: item.message || '',
+          <View
+            onLayout={e =>
+              recordChatItemHeight(
+                item.id ?? item.message_id,
+                e.nativeEvent.layout.height,
+              )
+            }
+            style={{
+              backgroundColor:
+                highlightMsgId &&
+                String(item.id ?? item.message_id) === String(highlightMsgId)
+                  ? colors.chatHighlight
+                  : 'transparent',
             }}
-            index={index}
-            messages={replyChat}
-            inverted={true}
-            onLongPress={() => handleLongPress(item)}
-            onMentionUser={handleMentionUser}
-          />
+          >
+            <ThreadMessageItem
+              item={{
+                ...item,
+                id: item.id ?? item.message_id,
+                text: item.message || '',
+                message: item.message || '',
+              }}
+              index={index}
+              messages={replyChat}
+              inverted={true}
+              onLongPress={() => handleLongPress(item)}
+              onMentionUser={handleMentionUser}
+            />
+          </View>
         )}
         ListFooterComponent={
           <ThreadItem

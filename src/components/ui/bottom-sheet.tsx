@@ -32,6 +32,8 @@ interface Props extends Partial<BottomSheetProps> {
   enableHandlePanningGesture?: boolean;
   handleComponent?: null | undefined;
   showBackdrop?: boolean;
+  /** Mount already open (useful for conditionally mounted sheets). */
+  startOpen?: boolean;
 }
 
 const AppBottomSheet = forwardRef<AppBottomSheetRef, Props>(
@@ -46,14 +48,15 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, Props>(
       enableHandlePanningGesture = true,
       handleComponent = undefined,
       showBackdrop = true,
-
+      startOpen = false,
       ...props
     },
     ref,
   ) => {
     const { colors } = useTheme();
     const bottomSheetRef = useRef<BottomSheet>(null);
-    const [sheetIndex, setSheetIndex] = useState(-1);
+    const openIndex = Math.max(0, snapPoints.length - 1);
+    const [sheetIndex, setSheetIndex] = useState(startOpen ? openIndex : -1);
     const themedStyles = useMemo(
       () =>
         StyleSheet.create({
@@ -78,15 +81,28 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, Props>(
       handleIndicatorStyle,
       onChange,
       style,
+      index: _ignoredIndex,
       ...bottomSheetProps
     } = props;
 
-    useImperativeHandle(ref, () => ({
-      expand: () => bottomSheetRef.current?.expand(),
-      close: () => bottomSheetRef.current?.close(),
-      snapToIndex: (index: number) =>
-        bottomSheetRef.current?.snapToIndex(index),
-    }));
+    useImperativeHandle(
+      ref,
+      () => ({
+        expand: () => {
+          setSheetIndex(openIndex);
+          bottomSheetRef.current?.snapToIndex(openIndex);
+        },
+        close: () => {
+          setSheetIndex(-1);
+          bottomSheetRef.current?.close();
+        },
+        snapToIndex: (index: number) => {
+          setSheetIndex(index);
+          bottomSheetRef.current?.snapToIndex(index);
+        },
+      }),
+      [openIndex],
+    );
 
     const handleChange = useCallback(
       (index: number, position: number, type: any) => {
@@ -111,7 +127,6 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, Props>(
     return (
       <BottomSheet
         ref={bottomSheetRef}
-        index={-1}
         snapPoints={snapPoints}
         enablePanDownToClose={enablePanDown}
         backdropComponent={renderBackdrop}
@@ -123,6 +138,9 @@ const AppBottomSheet = forwardRef<AppBottomSheetRef, Props>(
         activeOffsetY={[-5, 5]}
         failOffsetX={[-5, 5]}
         {...bottomSheetProps}
+        // Keep index controlled so expand/close survive re-renders.
+        // (Hardcoding index={-1} + setState was snapping sheets shut immediately.)
+        index={sheetIndex}
         onChange={handleChange}
         // Closed sheets still sit in the tree and steal taps (e.g. Settings list).
         style={[{ pointerEvents: sheetIndex >= 0 ? 'auto' : 'none' }, style]}

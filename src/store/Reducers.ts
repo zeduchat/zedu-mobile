@@ -329,12 +329,18 @@ const reducers = (state: AppState, action: Action): AppState => {
         // Remove from current position
         currentDms.splice(dmIndex, 1);
 
+        // Keep conversation identity from the list row. Centrifugo unread payloads
+        // often carry the message sender's avatar/username and would flash the
+        // wrong (e.g. logged-in) user on the home list until silent sync.
         const updatedDm = {
           ...existingDm,
           ...updateData,
           thread_count: updateData.thread_count ?? existingDm.thread_count,
           preview_message:
             updateData.preview_message ?? existingDm.preview_message,
+          avatar_url: existingDm.avatar_url,
+          default_avatar_url: existingDm.default_avatar_url,
+          username: existingDm.username,
           ...(Array.isArray(updateData.participants) && {
             participants: updateData.participants,
           }),
