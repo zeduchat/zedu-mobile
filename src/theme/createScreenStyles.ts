@@ -60,7 +60,7 @@ export function createSettingsStyles(colors: ThemeColors) {
     itemRow: { flexDirection: 'row', alignItems: 'center', padding: 14 },
     iconContainer: { width: 32, alignItems: 'center' },
     textContainer: { flex: 1, marginLeft: 12 },
-    itemTitle: { fontSize: 16, color: colors.textPrimary },
+    itemTitle: { fontSize: 15, color: colors.textPrimary },
     itemSubtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
     divider: {
       height: StyleSheet.hairlineWidth,

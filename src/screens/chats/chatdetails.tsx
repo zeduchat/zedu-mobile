@@ -41,9 +41,7 @@ import { ACTIONS } from '@/store/types';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import UseGroupDetails from '@/services/chat/group-details';
 import { MentionSheet } from '@/components/layout/chat/mention-sheet';
-import Feather from 'react-native-vector-icons/Feather';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import BuzzService from '@/services/buzz.service';
 import { ShowNotify } from '@/components/ui/toast';
 import { buildMessageHtml, getPlainMessageText } from '@/utils/message-text';
@@ -56,14 +54,27 @@ import {
   consumePendingPinJump,
   createScrollToIndexFailedHandler,
   ensurePinnedThreadLoaded,
+  ensureThreadIdLoaded,
+  findMessageIndexByPreview,
   findPinnedMessageIndex,
   findThreadIndex,
   getPinnedJumpTarget,
+  isChatRowHighlighted,
   recordChatItemHeight,
   runAfterPinNavReturn,
   scrollChatToIndex,
 } from '@/utils/scroll-to-pinned-message';
 import type { ResolvedPin } from '@/utils/resolve-pinned-messages';
+import {
+  ChatScrollToBottomButton,
+  useInvertedChatScrollToBottom,
+} from '@/components/layout/chat/scroll-to-bottom';
+import {
+  ChatHeaderMenu,
+  ChatHeaderSearchBar,
+} from '@/components/layout/chat/chat-header-menu';
+import { ChatSearchResults } from '@/components/layout/chat/chat-search-results';
+import type { ChannelSearchHit } from '@/services/chat/channel-search';
 
 const ChatDetailScreen = ({ navigation }: any) => {
   const { colors } = useTheme();
@@ -73,6 +84,12 @@ const ChatDetailScreen = ({ navigation }: any) => {
   const flatListRef = useRef<FlatList>(null);
   const pendingJumpIdRef = useRef<string | null>(null);
   const pinJumpLockRef = useRef(false);
+  const dmsChatRef = useRef<any[]>([]);
+  const {
+    onScroll: onChatScroll,
+    visible: showScrollToBottom,
+    scrollToBottom,
+  } = useInvertedChatScrollToBottom(flatListRef);
   const actionSheetRef = useRef<any>(null);
   const pickerSheetRef = useRef<any>(null);
   const [selectedMsg, setSelectedMsg] = useState<ChatItem | null>(null);
@@ -91,6 +108,8 @@ const ChatDetailScreen = ({ navigation }: any) => {
   const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
   const [mentionSheetUser, setMentionSheetUser] = useState<any | null>(null);
   const [buzzConfirmVisible, setBuzzConfirmVisible] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const { state, dispatch } = useDataContext();
   const { handleTyping } = useTyping(state.chatSubscription);
@@ -106,6 +125,7 @@ const ChatDetailScreen = ({ navigation }: any) => {
     buzzShowVideo,
     orgId,
   } = state;
+  dmsChatRef.current = dmsChat || [];
   const route = useRoute<RouteProp<ChatStackParamList, 'ChatDetails'>>();
   const { channel_id, fromNotification } = route.params ?? {};
   const participants = Array.isArray(participant) ? participant : [];
@@ -119,6 +139,12 @@ const ChatDetailScreen = ({ navigation }: any) => {
   const [callLoading, setCallLoading] = useState(false);
   const _callbackRef = useRef(state?.callback);
   const [returnLoading, setReturnLoading] = useState(true);
+  const suppressLoadMoreUntilRef = useRef(0);
+
+  const handleLoadMore = useCallback(() => {
+    if (Date.now() < suppressLoadMoreUntilRef.current) return;
+    loadMore();
+  }, [loadMore]);
 
   const { clearDraft, restoreDraft } = useMessageDraft({
     scope: 'dm',
@@ -600,6 +626,86 @@ const ChatDetailScreen = ({ navigation }: any) => {
     cancelPinnedScrollJumps();
   }, []);
 
+  const handleSearchSelect = useCallback(
+    async (hit: ChannelSearchHit) => {
+      const jumpId = String(hit.messageId || '');
+      if (!jumpId) return;
+
+      Keyboard.dismiss();
+      setIsSearching(false);
+      setSearchQuery('');
+
+      cancelPinnedScrollJumps();
+      pinJumpLockRef.current = false;
+      pendingJumpIdRef.current = jumpId;
+      setHighlightMsgId(jumpId);
+      suppressLoadMoreUntilRef.current = Date.now() + 2000;
+
+      const resolveIndex = () => {
+        let idx = findThreadIndex(dmsChatRef.current, jumpId);
+        if (idx < 0) {
+          idx = findMessageIndexByPreview(
+            dmsChatRef.current,
+            hit.message,
+            hit.timestamp,
+          );
+        }
+        return idx;
+      };
+
+      let found = resolveIndex() >= 0;
+
+      if (!found && channel_id) {
+        const loaded = await ensureThreadIdLoaded({
+          messages: dmsChatRef.current,
+          threadId: jumpId,
+          channelId: String(channel_id),
+          scope: 'chat',
+          onPageLoaded: (page, data) => {
+            dispatch({
+              type: ACTIONS.DMS_CHAT,
+              payload: { data, page },
+            });
+          },
+        });
+        found = loaded >= 0 || resolveIndex() >= 0;
+      }
+
+      const performJump = (index: number) => {
+        if (pinJumpLockRef.current || index < 0) return;
+        pinJumpLockRef.current = true;
+        pendingJumpIdRef.current = null;
+        const row = dmsChatRef.current[index];
+        const highlightId = String(
+          row?.thread_id || row?.id || row?.message_id || jumpId,
+        );
+        setHighlightMsgId(highlightId);
+        scrollChatToIndex(flatListRef, index, dmsChatRef.current);
+        setTimeout(() => setHighlightMsgId(null), 2500);
+      };
+
+      if (!found) {
+        setTimeout(() => {
+          if (pendingJumpIdRef.current === jumpId) {
+            pendingJumpIdRef.current = null;
+            setHighlightMsgId(null);
+            ShowNotify('Error', 'Could not find that message');
+          }
+        }, 2500);
+        return;
+      }
+
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          if (pendingJumpIdRef.current !== jumpId) return;
+          const index = resolveIndex();
+          if (index >= 0) performJump(index);
+        }, 150);
+      });
+    },
+    [channel_id, dispatch],
+  );
+
   const handleScrollToIndexFailed = useMemo(
     () => createScrollToIndexFailedHandler(flatListRef),
     [],
@@ -656,153 +762,193 @@ const ChatDetailScreen = ({ navigation }: any) => {
 
       {/* Header stays identical */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={colors.iconDefault} />
-        </TouchableOpacity>
-
-        <View style={styles.headerAvatarContainer}>
-          <Image
-            source={{
-              uri:
-                headerParticipant?.avatar_url ||
-                headerParticipant?.default_avatar_url,
+        {isSearching ? (
+          <ChatHeaderSearchBar
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onCancel={() => {
+              setIsSearching(false);
+              setSearchQuery('');
             }}
-            style={styles.headerAvatar}
+            placeholder="Search messages…"
           />
-        </View>
-        <TouchableOpacity
-          style={styles.headerInfo}
-          onPress={() =>
-            navigation.navigate('UserDetailScreen', {
-              participant: headerParticipant,
-              channel_id,
-            })
-          }
-        >
-          <AppText variant="bold" size={15}>
-            {headerParticipant?.username}
-          </AppText>
-        </TouchableOpacity>
+        ) : (
+          <>
+            <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
+              <Ionicons
+                name="chevron-back"
+                size={24}
+                color={colors.iconDefault}
+              />
+            </TouchableOpacity>
 
-        <TouchableOpacity
-          style={{ padding: 5, borderRadius: 5, marginRight: 4 }}
-          onPress={() =>
-            navigation.navigate('PinnedMessages', {
-              channel_id,
-              scope: 'chat',
-            })
-          }
-        >
-          <MaterialCommunityIcons
-            name="pin"
-            size={20}
-            color={colors.iconDefault}
-          />
-        </TouchableOpacity>
+            <View style={styles.headerAvatarContainer}>
+              <Image
+                source={{
+                  uri:
+                    headerParticipant?.avatar_url ||
+                    headerParticipant?.default_avatar_url,
+                }}
+                style={styles.headerAvatar}
+              />
+            </View>
+            <TouchableOpacity
+              style={styles.headerInfo}
+              onPress={() =>
+                navigation.navigate('UserDetailScreen', {
+                  participant: headerParticipant,
+                  channel_id,
+                })
+              }
+            >
+              <AppText variant="bold" size={15}>
+                {headerParticipant?.username}
+              </AppText>
+            </TouchableOpacity>
 
-        <TouchableOpacity
-          style={{ padding: 5, borderRadius: 5, marginRight: 10 }}
-          onPress={requestStartBuzz}
-        >
-          {callLoading ? (
-            <ActivityIndicator color={colors.primary} />
-          ) : (
-            <Feather name="video" size={22} color={colors.iconDefault} />
-          )}
-        </TouchableOpacity>
+            <ChatHeaderMenu
+              buzzLoading={callLoading}
+              onBuzzCall={requestStartBuzz}
+              onSearch={() => setIsSearching(true)}
+              onPinnedMessages={() =>
+                navigation.navigate('PinnedMessages', {
+                  channel_id,
+                  scope: 'chat',
+                })
+              }
+            />
+          </>
+        )}
       </View>
 
       <ChatBackground />
 
-      <FlatList
-        ref={flatListRef}
-        data={dmsChat}
-        inverted
-        showsVerticalScrollIndicator={false}
-        keyExtractor={item => item.thread_id}
-        extraData={[highlightMsgId, editMsgId, onEdit]}
-        onScrollToIndexFailed={handleScrollToIndexFailed}
-        onScrollBeginDrag={cancelPinnedJumpFollow}
-        renderItem={({ item, index }) => (
-          <View
-            onLayout={e =>
-              recordChatItemHeight(item.thread_id, e.nativeEvent.layout.height)
-            }
-            style={{
-              marginBottom: 15,
-              backgroundColor:
-                (onEdit && editMsgId === item.thread_id) ||
-                highlightMsgId === item.thread_id
-                  ? colors.chatHighlight
-                  : 'transparent',
-            }}
-          >
-            <MessageItem
-              item={{
-                ...item,
-                id: item.thread_id,
-                text: item.message,
-                sent: item.user_id === user.user_id,
+      <View style={{ flex: 1 }}>
+        <FlatList
+          ref={flatListRef}
+          data={dmsChat}
+          inverted
+          showsVerticalScrollIndicator={false}
+          keyExtractor={item => item.thread_id}
+          extraData={[highlightMsgId, editMsgId, onEdit]}
+          onScrollToIndexFailed={handleScrollToIndexFailed}
+          onScroll={onChatScroll}
+          scrollEventThrottle={16}
+          onScrollBeginDrag={cancelPinnedJumpFollow}
+          pointerEvents={isSearching ? 'none' : 'auto'}
+          style={isSearching ? { flex: 1, opacity: 0 } : { flex: 1 }}
+          renderItem={({ item, index }) => (
+            <View
+              onLayout={e =>
+                recordChatItemHeight(
+                  item.thread_id,
+                  e.nativeEvent.layout.height,
+                )
+              }
+              style={{
+                marginBottom: 15,
+                backgroundColor:
+                  (onEdit && editMsgId === item.thread_id) ||
+                  isChatRowHighlighted(item, highlightMsgId)
+                    ? colors.chatHighlight
+                    : 'transparent',
               }}
-              index={index}
-              messages={dmsChat}
-              onLongPress={() => handleLongPress(item)}
-              onMentionUser={handleMentionUser}
-              editMsgId={editMsgId}
-              onEdit={onEdit}
-            />
-          </View>
-        )}
-        contentContainerStyle={styles.listContent}
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.1}
-        ListFooterComponent={listFooter}
-      />
-
-      <ChatKeyboardAvoidingView>
-        {mentionState && (
-          <MentionSheet
-            query={mentionState.query}
-            participants={mentionParticipants}
-            onSelect={handleMentionSelect}
+            >
+              <MessageItem
+                item={{
+                  ...item,
+                  id: item.thread_id,
+                  text: item.message,
+                  sent: item.user_id === user.user_id,
+                }}
+                index={index}
+                messages={dmsChat}
+                onLongPress={() => handleLongPress(item)}
+                onMentionUser={handleMentionUser}
+                editMsgId={editMsgId}
+                onEdit={onEdit}
+              />
+            </View>
+          )}
+          contentContainerStyle={styles.listContent}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.1}
+          ListFooterComponent={listFooter}
+        />
+        {!isSearching && (
+          <ChatScrollToBottomButton
+            visible={showScrollToBottom}
+            onPress={scrollToBottom}
           />
         )}
-
-        <ChatInput
-          message={message}
-          setMessage={setMessage}
-          onTypingChange={handleTyping}
-          onSend={(content: any) =>
-            onEdit ? handleSendEditMessage(content) : handleSendMessage(content)
-          }
-          onVoiceRecorded={handleVoiceRecorded}
-          onVoiceSendReady={handleVoiceSendReady}
-          onVoiceCancel={handleVoiceCancel}
-          isVoiceUploading={isVoiceUploading}
-          onPickImage={pickImage}
-          onMediaPicker={() => setMediaPickerOpen(true)}
-          onOpenEmoji={() => setIsEmojiOpen(true)}
-          onCloseEmoji={() => setIsEmojiOpen(false)}
-          isEmojiOpen={isEmojiOpen}
-          onFocus={() => {
-            pickerSheetRef.current?.close();
-            setMediaPickerOpen(false);
-          }}
-          onMentionTrigger={handleMentionTrigger}
-          onMentionCancel={() => setMentionState(null)}
-        />
-
-        {isEmojiOpen && (
-          <View style={styles.emojiWrapper}>
-            <ThemedEmojiKeyboard
-              onEmojiSelected={handleEmojiSelect}
-              categoryPosition="bottom"
-              enableSearchBar
-              emojiSize={25}
+        {isSearching && (
+          <View
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: colors.background,
+            }}
+          >
+            <ChatSearchResults
+              channelId={String(channel_id)}
+              query={searchQuery}
+              onSelect={handleSearchSelect}
             />
           </View>
         )}
-      </ChatKeyboardAvoidingView>
+      </View>
+
+      {!isSearching && (
+        <ChatKeyboardAvoidingView>
+          {mentionState && (
+            <MentionSheet
+              query={mentionState.query}
+              participants={mentionParticipants}
+              onSelect={handleMentionSelect}
+            />
+          )}
+
+          <ChatInput
+            message={message}
+            setMessage={setMessage}
+            onTypingChange={handleTyping}
+            onSend={(content: any) =>
+              onEdit
+                ? handleSendEditMessage(content)
+                : handleSendMessage(content)
+            }
+            onVoiceRecorded={handleVoiceRecorded}
+            onVoiceSendReady={handleVoiceSendReady}
+            onVoiceCancel={handleVoiceCancel}
+            isVoiceUploading={isVoiceUploading}
+            onPickImage={pickImage}
+            onMediaPicker={() => setMediaPickerOpen(true)}
+            onOpenEmoji={() => setIsEmojiOpen(true)}
+            onCloseEmoji={() => setIsEmojiOpen(false)}
+            isEmojiOpen={isEmojiOpen}
+            onFocus={() => {
+              pickerSheetRef.current?.close();
+              setMediaPickerOpen(false);
+            }}
+            onMentionTrigger={handleMentionTrigger}
+            onMentionCancel={() => setMentionState(null)}
+          />
+
+          {isEmojiOpen && (
+            <View style={styles.emojiWrapper}>
+              <ThemedEmojiKeyboard
+                onEmojiSelected={handleEmojiSelect}
+                categoryPosition="bottom"
+                enableSearchBar
+                emojiSize={25}
+              />
+            </View>
+          )}
+        </ChatKeyboardAvoidingView>
+      )}
 
       {selectedMsg && (
         <MessageAction

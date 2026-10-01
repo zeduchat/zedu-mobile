@@ -145,6 +145,72 @@ export const findThreadIndex = (
   });
 };
 
+/** Match a search hit by plain text when ids don't line up. */
+export const findMessageIndexByPreview = (
+  messages: Array<{ message?: string; created_at?: string }> | null | undefined,
+  previewHtml: string,
+  timestamp?: string,
+) => {
+  if (!messages?.length || !previewHtml) return -1;
+
+  const needle = String(previewHtml)
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+
+  if (!needle) return -1;
+
+  const targetTs = timestamp ? Date.parse(timestamp) : NaN;
+
+  return messages.findIndex(message => {
+    const text = String(message?.message || '')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+
+    if (
+      !text ||
+      (text !== needle && !text.includes(needle) && !needle.includes(text))
+    ) {
+      return false;
+    }
+
+    if (!Number.isNaN(targetTs) && message?.created_at) {
+      const rowTs = Date.parse(message.created_at);
+      if (!Number.isNaN(rowTs) && Math.abs(rowTs - targetTs) > 120000) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+};
+
+/** Yellow-row highlight: match any of the row's id fields. */
+export const isChatRowHighlighted = (
+  item:
+    | { thread_id?: string; id?: string; message_id?: string }
+    | null
+    | undefined,
+  highlightMsgId: string | null | undefined,
+) => {
+  if (!highlightMsgId || !item) return false;
+  const target = String(highlightMsgId);
+  return [item.thread_id, item.id, item.message_id]
+    .filter(Boolean)
+    .some(id => String(id) === target);
+};
+
 export const findPinnedMessageIndex = (
   messages: any[] | null | undefined,
   pin: ResolvedPin,
@@ -187,10 +253,46 @@ export async function ensurePinnedThreadLoaded({
   scope: PinScope;
   onPageLoaded?: (page: number, data: any[]) => void;
 }): Promise<number> {
-  let list = Array.isArray(messages) ? [...messages] : [];
+  const target = getPinnedJumpTarget(pin);
+  return ensureThreadIdLoaded({
+    messages,
+    threadId: target.threadId || pin.pinId,
+    extraIds: [
+      pin.threadId,
+      pin.messageId,
+      pin.message?.thread_id,
+      target.isReply ? pin.message?.id : null,
+      target.isReply ? pin.message?.message_id : null,
+    ],
+    channelId,
+    scope,
+    onPageLoaded,
+  });
+}
 
-  let index = findPinnedMessageIndex(list, pin);
-  if (index >= 0) return index;
+/**
+ * Page older threads until `threadId` is in the local list (or pages run out).
+ */
+export async function ensureThreadIdLoaded({
+  messages,
+  threadId,
+  extraIds = [],
+  channelId,
+  scope,
+  onPageLoaded,
+}: {
+  messages: any[];
+  threadId: string;
+  extraIds?: Array<string | undefined | null>;
+  channelId: string;
+  scope: PinScope;
+  onPageLoaded?: (page: number, data: any[]) => void;
+}): Promise<number> {
+  let list = Array.isArray(messages) ? [...messages] : [];
+  const id = String(threadId || '');
+
+  let index = findThreadIndex(list, id, extraIds);
+  if (index >= 0 || !id) return index;
 
   const tryFetch = async (preferGroup: boolean) => {
     const startPage = Math.max(2, Math.floor(list.length / 50) + 1);
@@ -214,7 +316,7 @@ export async function ensurePinnedThreadLoaded({
       );
       list = [...list, ...merged];
 
-      index = findPinnedMessageIndex(list, pin);
+      index = findThreadIndex(list, id, extraIds);
       if (index >= 0) return true;
 
       if (batch.length < 50) break;
@@ -228,11 +330,85 @@ export async function ensurePinnedThreadLoaded({
     await tryFetch(true);
   }
 
-  return findPinnedMessageIndex(list, pin);
+  return findThreadIndex(list, id, extraIds);
 }
 
 /**
- * One instant jump (no animation). Uses measured row heights when available.
+ * Jump to a thread once the list is ready.
+ * Prefer scrollToIndex (accurate); fall back to measured/estimated offset.
+ */
+export const jumpChatListToIndex = (
+  listRef: RefObject<FlatList<any> | null>,
+  index: number,
+  messages?: Array<{
+    thread_id?: string;
+    id?: string;
+    message_id?: string;
+  }> | null,
+  animated = false,
+) => {
+  if (index < 0 || !listRef.current) return false;
+
+  activeScrollToken += 1;
+
+  try {
+    listRef.current.scrollToIndex({
+      index,
+      animated,
+      viewPosition: 0.35,
+    });
+    return true;
+  } catch {
+    listRef.current.scrollToOffset({
+      offset: offsetForChatIndex(messages, index),
+      animated,
+    });
+    return true;
+  }
+};
+
+/**
+ * One deferred jump after search UI closes. Does not multi-retry-thrash —
+ * a single delayed attempt, then the pending useEffect can finish if needed.
+ */
+export const scheduleJumpToThreadId = ({
+  listRef,
+  getMessages,
+  threadId,
+  pendingJumpIdRef,
+  pinJumpLockRef,
+  onScrolled,
+  animated = false,
+  delayMs = 160,
+}: {
+  listRef: RefObject<FlatList<any> | null>;
+  getMessages: () => any[] | null | undefined;
+  threadId: string;
+  pendingJumpIdRef: { current: string | null };
+  pinJumpLockRef: { current: boolean };
+  onScrolled?: () => void;
+  animated?: boolean;
+  delayMs?: number;
+}) => {
+  const token = ++activeScrollToken;
+
+  setTimeout(() => {
+    if (token !== activeScrollToken) return;
+    if (pendingJumpIdRef.current !== threadId) return;
+
+    const messages = getMessages();
+    const index = findThreadIndex(messages, threadId);
+    if (index < 0 || !listRef.current) return;
+
+    pinJumpLockRef.current = true;
+    pendingJumpIdRef.current = null;
+    jumpChatListToIndex(listRef, index, messages, animated);
+    onScrolled?.();
+  }, delayMs);
+};
+
+/**
+ * One instant jump. Prefer scrollToIndex; offset is fallback.
  */
 export const scrollChatToIndex = (
   listRef: RefObject<FlatList<any> | null>,
@@ -243,21 +419,24 @@ export const scrollChatToIndex = (
     message_id?: string;
   }> | null,
 ) => {
-  if (index < 0 || !listRef.current) return;
-
-  activeScrollToken += 1;
-
-  listRef.current.scrollToOffset({
-    offset: offsetForChatIndex(messages, index),
-    animated: false,
-  });
+  jumpChatListToIndex(listRef, index, messages, false);
 };
 
-/** @deprecated no-op — jumps use scrollToOffset only. */
+/** Retry scrollToIndex after the list measures more frames. */
 export const createScrollToIndexFailedHandler =
-  (_listRef: RefObject<FlatList<any> | null>) =>
-  (_info: {
+  (listRef: RefObject<FlatList<any> | null>) =>
+  (info: {
     index: number;
     highestMeasuredFrameIndex: number;
     averageItemLength: number;
-  }) => {};
+  }) => {
+    const offset = Math.max(0, info.averageItemLength * info.index);
+    listRef.current?.scrollToOffset({ offset, animated: false });
+    setTimeout(() => {
+      listRef.current?.scrollToIndex({
+        index: info.index,
+        animated: false,
+        viewPosition: 0.35,
+      });
+    }, 80);
+  };

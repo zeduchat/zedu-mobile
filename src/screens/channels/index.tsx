@@ -20,7 +20,6 @@ import Feather from 'react-native-vector-icons/Feather';
 import ChannelOnboardingSheet from './channel-onboarding';
 import AppBottomSheet from '@/components/ui/bottom-sheet';
 import { useDataContext } from '@/store/useDataContext';
-import moment from 'moment';
 import { formatCount } from '@/utils';
 import { ACTIONS } from '@/store/types';
 import { Channel } from '@/types/channel';
@@ -28,6 +27,7 @@ import ChatSkeleton from '@/components/skeleton/chat-skeleton';
 import { useChannels } from '@/services/channels/channel-list';
 import { ChannelPopover } from '@/components/layout/channel-popover';
 import { UserAvatarWithStatus } from '@/components/ui/user-avatar-with-status';
+import { formatChatListTime } from '@/utils/format-chat-list-time';
 
 const ChannelHome = () => {
   const navigation = useNavigation();
@@ -195,14 +195,7 @@ const ChannelHome = () => {
                           size={12}
                           style={[styles.chatTime, { marginRight: 0 }]}
                         >
-                          {item?.last_read_at
-                            ? moment(item.last_read_at).calendar(null, {
-                                dsameDay: 'h:mm a',
-                                lastDay: '[Yesterday]',
-                                lastWeek: 'dddd',
-                                sameElse: 'DD/MM/YYYY',
-                              })
-                            : null}
+                          {formatChatListTime(item?.last_read_at)}
                         </AppText>
                       </View>
                       <View style={styles.chatFooterRow}>

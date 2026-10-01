@@ -57,6 +57,83 @@ const mergeMarks = (base: TextMarks, next: TextMarks): TextMarks => ({
   ...next,
 });
 
+/** Bare http(s) / www URLs inside plain text (not already wrapped in <a>). */
+const BARE_URL_REGEX = /((?:https?:\/\/|www\.)[^\s<>"']+)/gi;
+
+const trimTrailingUrlPunctuation = (url: string): string =>
+  url.replace(/[.,;:!?)}\]]+$/, '');
+
+const normalizeAutolinkUrl = (raw: string): string => {
+  const trimmed = trimTrailingUrlPunctuation(raw);
+  if (/^www\./i.test(trimmed)) {
+    return `https://${trimmed}`;
+  }
+  return trimmed;
+};
+
+/** Push text and promote bare URLs to tappable link segments. */
+const emitTextWithAutolinks = (
+  out: RichMessageSegment[],
+  content: string,
+  marks: TextMarks,
+) => {
+  if (!content) {
+    return;
+  }
+
+  // Keep URLs literal inside inline code.
+  if (marks.code) {
+    out.push({ type: 'text', content, marks: { ...marks } });
+    return;
+  }
+
+  const hasMarks = marks.bold || marks.italic || marks.strike;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let found = false;
+
+  BARE_URL_REGEX.lastIndex = 0;
+  while ((match = BARE_URL_REGEX.exec(content)) !== null) {
+    found = true;
+    if (match.index > lastIndex) {
+      const piece = content.slice(lastIndex, match.index);
+      out.push(
+        hasMarks
+          ? { type: 'text', content: piece, marks: { ...marks } }
+          : { type: 'text', content: piece },
+      );
+    }
+
+    const rawUrl = match[1];
+    const url = normalizeAutolinkUrl(rawUrl);
+    const label = trimTrailingUrlPunctuation(rawUrl);
+    out.push(
+      hasMarks
+        ? { type: 'link', content: label, url, marks: { ...marks } }
+        : { type: 'link', content: label, url },
+    );
+    lastIndex = match.index + rawUrl.length;
+  }
+
+  if (!found) {
+    out.push(
+      hasMarks
+        ? { type: 'text', content, marks: { ...marks } }
+        : { type: 'text', content },
+    );
+    return;
+  }
+
+  if (lastIndex < content.length) {
+    const piece = content.slice(lastIndex);
+    out.push(
+      hasMarks
+        ? { type: 'text', content: piece, marks: { ...marks } }
+        : { type: 'text', content: piece },
+    );
+  }
+};
+
 const pushText = (
   out: RichMessageSegment[],
   content: string,
@@ -78,23 +155,19 @@ const pushText = (
     while ((match = mdPattern.exec(content)) !== null) {
       found = true;
       if (match.index > last) {
-        out.push({ type: 'text', content: content.slice(last, match.index) });
+        emitTextWithAutolinks(out, content.slice(last, match.index), {});
       }
 
       if (match[2] != null) {
-        out.push({
-          type: 'text',
-          content: match[2],
-          marks: { bold: true, italic: true },
-        });
+        emitTextWithAutolinks(out, match[2], { bold: true, italic: true });
       } else if (match[3] != null) {
-        out.push({ type: 'text', content: match[3], marks: { bold: true } });
+        emitTextWithAutolinks(out, match[3], { bold: true });
       } else if (match[4] != null) {
-        out.push({ type: 'text', content: match[4], marks: { italic: true } });
+        emitTextWithAutolinks(out, match[4], { italic: true });
       } else if (match[5] != null) {
-        out.push({ type: 'text', content: match[5], marks: { strike: true } });
+        emitTextWithAutolinks(out, match[5], { strike: true });
       } else if (match[6] != null) {
-        out.push({ type: 'text', content: match[6], marks: { code: true } });
+        emitTextWithAutolinks(out, match[6], { code: true });
       }
 
       last = match.index + match[0].length;
@@ -102,18 +175,13 @@ const pushText = (
 
     if (found) {
       if (last < content.length) {
-        out.push({ type: 'text', content: content.slice(last) });
+        emitTextWithAutolinks(out, content.slice(last), {});
       }
       return;
     }
   }
 
-  const hasMarks = marks.bold || marks.italic || marks.strike || marks.code;
-  out.push(
-    hasMarks
-      ? { type: 'text', content, marks: { ...marks } }
-      : { type: 'text', content },
-  );
+  emitTextWithAutolinks(out, content, marks);
 };
 
 const pushInlineNewlines = (
@@ -507,7 +575,7 @@ export const parseComposerMentionSegments = (
   return segments;
 };
 
-const URL_REGEX = /(https?:\/\/[^\s<>"']+)/gi;
+const URL_REGEX = /((?:https?:\/\/|www\.)[^\s<>"']+)/gi;
 const ANCHOR_REGEX = /<a[^>]*href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gi;
 
 export const decodeHtmlEntities = (text: string): string =>
@@ -645,9 +713,6 @@ export const buildMessageHtml = (content: string): string => {
     .join('');
 };
 
-const trimTrailingUrlPunctuation = (url: string): string =>
-  url.replace(/[.,;:!?)}\]]+$/, '');
-
 const parsePlainTextUrls = (text: string): MessageTextSegment[] => {
   const cleaned = decodeHtmlEntities(stripHtmlTags(text));
   if (!cleaned) {
@@ -668,8 +733,9 @@ const parsePlainTextUrls = (text: string): MessageTextSegment[] => {
     }
 
     const rawUrl = match[1];
-    const url = trimTrailingUrlPunctuation(rawUrl);
-    segments.push({ type: 'link', content: url, url });
+    const url = normalizeAutolinkUrl(rawUrl);
+    const label = trimTrailingUrlPunctuation(rawUrl);
+    segments.push({ type: 'link', content: label, url });
     lastIndex = match.index + rawUrl.length;
   }
 

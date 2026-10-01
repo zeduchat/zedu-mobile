@@ -1,15 +1,9 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import {
-  Linking,
-  StyleProp,
-  Text,
-  TextStyle,
-  View,
-  ViewStyle,
-} from 'react-native';
+import { StyleProp, Text, TextStyle, View, ViewStyle } from 'react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { createMessageMarkdownStyles } from '@/theme/createMessageStyles';
 import { ensureHttpsUrl } from '@/utils/link-url';
+import { openExternalUrl } from '@/utils/open-external-url';
 import {
   hasMessageContent,
   hasRichMessageContent,
@@ -22,7 +16,6 @@ import {
   isDocumentUrl,
   type DocumentPreviewFile,
 } from '@/utils/document-preview';
-import { ShowNotify } from '@/components/ui/toast';
 import { ChatFilePreviewModal } from './chat-file-attachment';
 import { MessageLinkPreviews } from './link-preview';
 
@@ -102,17 +95,7 @@ export const MessageContent: React.FC<MessageContentProps> = ({
   );
 
   const openExternalLink = useCallback(async (url: string) => {
-    const href = ensureHttpsUrl(url);
-    try {
-      const supported = await Linking.canOpenURL(href);
-      if (supported) {
-        await Linking.openURL(href);
-      } else {
-        ShowNotify('Error', "Don't know how to open this URL: " + href);
-      }
-    } catch {
-      ShowNotify('Error', 'An error occurred while opening the link');
-    }
+    await openExternalUrl(url);
   }, []);
 
   const handleUrlPress = useCallback(
