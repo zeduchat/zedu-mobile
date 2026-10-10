@@ -308,24 +308,15 @@ const HomeScreen = () => {
                       )}
                     </View>
 
-                    <View style={styles.chatInfo}>
-                      <View style={styles.chatHeaderRow}>
-                        <AppText
-                          variant="bold"
-                          size={14}
-                          numberOfLines={1}
-                          style={styles.chatName}
-                        >
-                          {item.username}
-                        </AppText>
-                        <AppText size={12} style={styles.chatTime}>
-                          {moment(item.last_read_at).calendar(null, {
-                            sameDay: 'h:mm a',
-                            lastDay: '[Yesterday]',
-                            lastWeek: 'dddd',
-                            sameElse: 'DD/MM/YYYY',
-                          })}
-                        </AppText>
+                    <AppText size={12} style={styles.chatTime}>
+  {moment(item.last_read_at).isSame(moment(), 'day')
+    ? moment(item.last_read_at).format('h:mm a')
+    : moment(item.last_read_at).calendar(null, {
+        lastDay: '[Yesterday]',
+        lastWeek: 'dddd',
+        sameElse: 'DD/MM/YYYY',
+      })}
+</AppText>
                       </View>
 
                       <View style={styles.chatFooterRow}>
