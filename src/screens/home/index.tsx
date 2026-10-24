@@ -32,6 +32,10 @@ import { PostRequest, PutRequest } from '@/utils/requests';
 import { RootStackParamList } from '@/navigation/navigator';
 import { UserAvatarWithStatus } from '@/components/ui/user-avatar-with-status';
 import { formatPreviewMessage } from '@/utils/message-text';
+import {
+  isFcmPlatform,
+  registerAndroidPushDevice,
+} from '@/services/push-notifications.service';
 
 const HomeScreen = () => {
   const navigation = useNavigation<DrawerNavigationProp<RootStackParamList>>();
@@ -57,6 +61,22 @@ const HomeScreen = () => {
   ];
 
   useEffect(() => {
+    if (isFcmPlatform) {
+      let unsubscribe: () => void = () => {};
+      let cancelled = false;
+      registerAndroidPushDevice().then(unsub => {
+        if (cancelled) {
+          unsub();
+        } else {
+          unsubscribe = unsub;
+        }
+      });
+      return () => {
+        cancelled = true;
+        unsubscribe();
+      };
+    }
+
     const getData = async () => {
       OneSignal.initialize(ONESIGNAL_APP_ID);
       const deviceToken = await OneSignal.User.pushSubscription.getIdAsync();

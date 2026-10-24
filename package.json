@@ -31,6 +31,8 @@
     "@react-native-community/slider": "^5.1.1",
     "@react-native-documents/picker": "^11.0.3",
     "@react-native-documents/viewer": "^3.0.0",
+    "@react-native-firebase/app": "26.4.0",
+    "@react-native-firebase/messaging": "26.4.0",
     "@react-native-google-signin/google-signin": "^16.1.1",
     "@react-native/new-app-screen": "0.83.1",
     "@react-navigation/bottom-tabs": "^7.9.0",
