@@ -2075,6 +2075,11 @@ export function createAddDescriptionStyles(colors: ThemeColors) {
     navTitle: { fontSize: 17, fontWeight: '700', color: colors.textPrimary },
     navActionText: { fontSize: 16, color: colors.primary },
     searchSection: { paddingHorizontal: 20, marginTop: 30 },
+    charCounter: {
+      alignSelf: 'flex-end',
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
   });
 }
 

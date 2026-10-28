@@ -23,6 +23,7 @@ interface AppInputProps {
   keyboardType?: 'default' | 'email-address' | 'numeric' | 'phone-pad';
   disabled?: boolean;
   multiline?: boolean;
+  maxLength?: number;
   style?: ViewStyle;
   inputStyle?: TextStyle;
   onFocus?: () => void;
@@ -39,6 +40,7 @@ export const AppInput: React.FC<AppInputProps> = ({
   keyboardType = 'default',
   disabled = false,
   multiline,
+  maxLength,
   style,
   inputStyle,
   onFocus,
@@ -124,6 +126,7 @@ export const AppInput: React.FC<AppInputProps> = ({
           onBlur={() => setIsFocused(false)}
           editable={!disabled}
           multiline={multiline}
+          maxLength={maxLength}
           textAlignVertical={multiline ? 'top' : 'center'}
         />
         {secureTextEntry && (

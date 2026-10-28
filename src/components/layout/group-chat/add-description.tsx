@@ -21,6 +21,8 @@ interface Props {
   channel_id: string;
 }
 
+const DESCRIPTION_MAX_LENGTH = 500;
+
 export const AddDescription = forwardRef<any, Props>(
   ({ onClose, channel_id }, ref: any) => {
     const { colors } = useTheme();
@@ -30,6 +32,8 @@ export const AddDescription = forwardRef<any, Props>(
     const { state, dispatch } = useDataContext();
     const { orgId, groupCallback, groupDetails } = state;
     const [snapPoints, setSnapPoints] = useState(['35%']);
+    const descriptionLength = description?.length ?? 0;
+    const canSave = description.trim().length > 0;
 
     useEffect(() => {
       setDescription(groupDetails?.group_description as string);
@@ -89,7 +93,7 @@ export const AddDescription = forwardRef<any, Props>(
 
             <TouchableOpacity
               onPress={handleSave}
-              disabled={description === '' || loading}
+              disabled={!canSave || loading}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}
             >
               {loading && (
@@ -101,7 +105,7 @@ export const AddDescription = forwardRef<any, Props>(
                   {
                     color: colors.primary,
                     fontWeight: '700',
-                    opacity: description === '' ? 0.5 : 1,
+                    opacity: canSave ? 1 : 0.5,
                   },
                 ]}
               >
@@ -122,7 +126,13 @@ export const AddDescription = forwardRef<any, Props>(
                 onChangeText={setDescription}
                 onFocus={handleFocus}
                 multiline={true}
+                maxLength={DESCRIPTION_MAX_LENGTH}
               />
+              {descriptionLength > 0 && (
+                <AppText style={styles.charCounter}>
+                  {descriptionLength}/{DESCRIPTION_MAX_LENGTH}
+                </AppText>
+              )}
             </View>
           </KeyboardAvoidingView>
         </View>
