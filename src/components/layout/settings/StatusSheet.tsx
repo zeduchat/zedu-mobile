@@ -19,6 +19,7 @@ import AppBottomSheet, {
 } from '@/components/ui/bottom-sheet';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { AppText } from '@/components/ui/text';
+import { ShowNotify } from '@/components/ui/toast';
 import { ThemedEmojiPicker } from '@/components/ui/themed-emoji-keyboard';
 import type { EmojiType } from 'rn-emoji-keyboard';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -31,6 +32,8 @@ type Props = {
   initialEmoji?: string;
   onChange?: (emoji: string, text: string, clearAfter?: string) => void;
 };
+
+const STATUS_MAX_LENGTH = 100;
 
 const CLEAR_OPTIONS = [
   { key: 'dont-clear', label: "Don't Clear" },
@@ -135,18 +138,14 @@ const StatusSheet = forwardRef<AppBottomSheetRef, Props>(
         online: true,
       };
 
-      const { error, data } = await PostRequest(
-        '/profile/change-status',
-        payload,
-      );
-
-      console.log(error, data);
+      const { error } = await PostRequest('/profile/change-status', payload);
 
       if (!error) {
         setLoading(false);
         close();
       } else {
         setLoading(false);
+        ShowNotify('Error', error || 'Failed to save your status');
       }
     };
 
@@ -204,8 +203,14 @@ const StatusSheet = forwardRef<AppBottomSheetRef, Props>(
                   style={styles.textInput}
                   placeholderTextColor="#ABABAD"
                   multiline={false}
+                  maxLength={STATUS_MAX_LENGTH}
                   onSubmitEditing={Keyboard.dismiss}
                 />
+                {text.length > 0 && (
+                  <AppText style={styles.charCounter}>
+                    {text.length}/{STATUS_MAX_LENGTH}
+                  </AppText>
+                )}
                 {text.length > 0 && (
                   <TouchableOpacity
                     onPress={() => setText('')}

@@ -2006,6 +2006,7 @@ export function createStatusSheetStyles(colors: ThemeColors) {
       fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
     },
     clearInputBtn: { padding: 4 },
+    charCounter: { fontSize: 12, color: colors.textSecondary, marginLeft: 4 },
     clearAfterRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
