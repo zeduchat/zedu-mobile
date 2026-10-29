@@ -27,6 +27,8 @@ interface AppInputProps {
   style?: ViewStyle;
   inputStyle?: TextStyle;
   onFocus?: () => void;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 }
 
 export const AppInput: React.FC<AppInputProps> = ({
@@ -44,6 +46,8 @@ export const AppInput: React.FC<AppInputProps> = ({
   style,
   inputStyle,
   onFocus,
+  accessibilityLabel,
+  accessibilityHint,
 }) => {
   const { colors } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
@@ -120,6 +124,9 @@ export const AppInput: React.FC<AppInputProps> = ({
           autoCapitalize={autoCapitalize}
           keyboardType={keyboardType}
           returnKeyType={returnKeyType}
+          accessibilityLabel={accessibilityLabel || label || placeholder}
+          accessibilityHint={accessibilityHint}
+          accessibilityState={{ disabled }}
           onFocus={() => {
             setIsFocused(true);
             onFocus?.();

@@ -16,6 +16,8 @@ interface AppButtonProps {
   loading?: boolean;
   style?: ViewStyle;
   disabled?: boolean;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 }
 
 export const AppButton: React.FC<AppButtonProps> = ({
@@ -25,6 +27,8 @@ export const AppButton: React.FC<AppButtonProps> = ({
   loading = false,
   style,
   disabled = false,
+  accessibilityLabel,
+  accessibilityHint,
 }) => {
   const { colors } = useTheme();
   const isPrimary = variant === 'primary';
@@ -71,6 +75,13 @@ export const AppButton: React.FC<AppButtonProps> = ({
       onPress={onPress}
       activeOpacity={0.8}
       disabled={loading || disabled}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel || title}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{
+        disabled: Boolean(disabled || loading),
+        busy: Boolean(loading),
+      }}
       style={[
         styles.button,
         isPrimary
