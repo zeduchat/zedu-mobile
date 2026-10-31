@@ -202,7 +202,7 @@ const ChatInput = ({
   const updateMentionTrigger = (text: string, cursorPos: number) => {
     const mention = getActiveMention(text, cursorPos);
     if (mention) {
-      onMentionTrigger?.(mention.query, mention.pos);
+      onMentionTrigger?.(mention.query, mention.pos, mention.trigger);
     } else {
       onMentionCancel?.();
     }
@@ -448,72 +448,96 @@ const ChatInput = ({
               </Text>
             ) : null}
 
-            {highlightMentions && composerSegments.length > 0 ? (
-              <AppText
-                pointerEvents="none"
+            <View style={styles.composerInputBox}>
+              {highlightMentions && composerSegments.length > 0 ? (
+                <Text
+                  allowFontScaling={false}
+                  pointerEvents="none"
+                  style={[
+                    styles.input,
+                    styles.inputOverlay,
+                    isExpanded ? { height: resolvedInputHeight } : null,
+                  ]}
+                >
+                  {composerSegments.map((segment, index) => {
+                    if (segment.type === 'channelMention') {
+                      return (
+                        <Text
+                          key={`composer-segment-${index}`}
+                          style={styles.composerChannelMentionText}
+                        >
+                          {segment.content}
+                        </Text>
+                      );
+                    }
+
+                    if (segment.type === 'channelRefMention') {
+                      return (
+                        <Text
+                          key={`composer-segment-${index}`}
+                          style={styles.composerChannelMentionText}
+                        >
+                          {segment.content}
+                        </Text>
+                      );
+                    }
+
+                    if (segment.type === 'userMention') {
+                      return (
+                        <Text
+                          key={`composer-segment-${index}`}
+                          style={styles.composerMentionText}
+                        >
+                          {segment.content}
+                        </Text>
+                      );
+                    }
+
+                    return (
+                      <Text
+                        key={`composer-segment-${index}`}
+                        style={styles.composerNormalText}
+                      >
+                        {segment.content}
+                      </Text>
+                    );
+                  })}
+                </Text>
+              ) : null}
+
+              <TextInput
+                ref={inputRef}
+                allowFontScaling={false}
+                cursorColor={colors.primary}
+                selectionColor={colors.primary}
+                placeholderTextColor={colors.textSecondary}
                 style={[
                   styles.input,
-                  styles.inputOverlay,
+                  highlightMentions ? { color: 'transparent' } : null,
                   isExpanded ? { height: resolvedInputHeight } : null,
                 ]}
-              >
-                {composerSegments.map((segment, index) => {
-                  if (segment.type === 'channelMention') {
-                    return (
-                      <AppText
-                        key={`composer-segment-${index}`}
-                        style={styles.composerChannelMentionText}
-                      >
-                        {segment.content}
-                      </AppText>
-                    );
-                  }
-
-                  if (segment.type === 'userMention') {
-                    return (
-                      <AppText
-                        key={`composer-segment-${index}`}
-                        style={styles.composerMentionText}
-                      >
-                        {segment.content}
-                      </AppText>
-                    );
-                  }
-
-                  return segment.content;
-                })}
-              </AppText>
-            ) : null}
-
-            <TextInput
-              ref={inputRef}
-              allowFontScaling={false}
-              style={[
-                styles.input,
-                highlightMentions && styles.inputTransparentText,
-                isExpanded ? { height: resolvedInputHeight } : null,
-              ]}
-              placeholder="Type a message"
-              value={message}
-              onChangeText={handleTextChange}
-              onSelectionChange={handleSelectionChange}
-              multiline
-              scrollEnabled={composerScrollEnabled}
-              blurOnSubmit={false}
-              onContentSizeChange={handleContentSizeChange}
-              textAlignVertical="top"
-              onPressIn={() => {
-                if (isEmojiOpen) onCloseEmoji();
-              }}
-              onFocus={() => {
-                isFocusedRef.current = true;
-                if (!isEmojiOpen) onFocus();
-              }}
-              onBlur={() => {
-                isFocusedRef.current = false;
-                onTypingChange?.(false);
-              }}
-            />
+                placeholder="Type a message"
+                value={message}
+                onChangeText={handleTextChange}
+                onSelectionChange={handleSelectionChange}
+                multiline
+                scrollEnabled={composerScrollEnabled}
+                blurOnSubmit={false}
+                onContentSizeChange={handleContentSizeChange}
+                textAlignVertical="top"
+                onPressIn={() => {
+                  if (isEmojiOpen) onCloseEmoji();
+                }}
+                onFocus={() => {
+                  isFocusedRef.current = true;
+                  if (!isEmojiOpen) onFocus();
+                }}
+                onBlur={() => {
+                  isFocusedRef.current = false;
+                  onTypingChange?.(false);
+                }}
+              />
+            </View>
 
             {!isEmojiOpen && (
               <TouchableOpacity

@@ -192,7 +192,12 @@ const ChatDetailScreen = ({ navigation }: any) => {
     [participant],
   );
 
-  const handleMentionTrigger = (query: string, pos: number) => {
+  const handleMentionTrigger = (
+    query: string,
+    pos: number,
+    trigger: '@' | '#' = '@',
+  ) => {
+    if (trigger === '#') return;
     setMentionState({ query, pos });
   };
 

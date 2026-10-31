@@ -6,7 +6,7 @@ export type MessageTextSegment = {
   url?: string;
 };
 
-export type MentionKind = 'user' | 'channel';
+export type MentionKind = 'user' | 'channel' | 'channel-ref';
 
 export type MessageRenderSegment =
   | { type: 'text'; content: string }
@@ -33,6 +33,7 @@ export type RichMessageSegment =
       type: 'mention';
       label: string;
       userId?: string;
+      channelId?: string;
       mentionKind: MentionKind;
     }
   | { type: 'newline' }
@@ -475,7 +476,8 @@ export const hasRichMessageContent = (
 export type ComposerMentionSegment =
   | { type: 'text'; content: string }
   | { type: 'userMention'; content: string }
-  | { type: 'channelMention'; content: string };
+  | { type: 'channelMention'; content: string }
+  | { type: 'channelRefMention'; content: string }; // <--- Add this line
 
 export const isChannelMentionLabel = (label: string): boolean =>
   label.trim().toLowerCase() === 'channel';
@@ -590,10 +592,11 @@ export const decodeHtmlEntities = (text: string): string =>
 const MENTION_TRIGGER_REGEX = /(?:^|\s)@([\w.\-_]*)$/;
 
 /** Returns the active @mention query at the cursor, if any. */
+/** Returns the active @mention or #channel query at the cursor, if any. */
 export const getActiveMention = (
   text: string,
   cursorPos: number,
-): { query: string; pos: number } | null => {
+): { query: string; pos: number; trigger: string } | null => {
   const beforeCursor = text.slice(0, Math.max(0, cursorPos));
   const match = beforeCursor.match(MENTION_TRIGGER_REGEX);
   if (!match) {
@@ -601,8 +604,9 @@ export const getActiveMention = (
   }
 
   return {
-    query: match[1] ?? '',
+    query: match[2] ?? '',
     pos: cursorPos,
+    trigger: match[1] ?? '@',
   };
 };
 
