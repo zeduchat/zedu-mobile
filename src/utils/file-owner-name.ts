@@ -21,12 +21,7 @@ const getIdentityId = (identity?: FileOwnerIdentity | null) =>
   normalizeId(identity?.user_id ?? identity?.id);
 
 const getIdentityName = (identity?: FileOwnerIdentity | null) =>
-  [
-    identity?.full_name,
-    identity?.name,
-    identity?.username,
-    identity?.email,
-  ]
+  [identity?.full_name, identity?.name, identity?.username, identity?.email]
     .find(value => value?.trim())
     ?.trim();
 
