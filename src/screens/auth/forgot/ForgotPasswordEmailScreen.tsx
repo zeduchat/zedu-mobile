@@ -10,6 +10,7 @@ import { PostRequest } from '@/utils/requests';
 import { useDataContext } from '@/store/useDataContext';
 import { ACTIONS } from '@/store/types';
 import { isValidEmail } from '@/utils/validation';
+import { normalizeEmail } from '@/utils/normalize-email';
 import { useTheme } from '@/theme/ThemeProvider';
 import { createAuthStyles } from '@/theme/createScreenStyles';
 
@@ -22,8 +23,8 @@ const ForgotPasswordEmailScreen: React.FC = () => {
   const { dispatch } = useDataContext();
 
   const handleSubmit = async () => {
-    const trimmedEmail = email.trim();
-    if (!isValidEmail(trimmedEmail)) {
+    const normalizedEmail = normalizeEmail(email);
+    if (!isValidEmail(normalizedEmail)) {
       dispatch({
         type: ACTIONS.ERROR,
         payload: 'Please enter a valid email address',
@@ -34,13 +35,13 @@ const ForgotPasswordEmailScreen: React.FC = () => {
     setLoading(true);
 
     const { data, error } = await PostRequest('/auth/password-reset', {
-      email: trimmedEmail,
+      email: normalizedEmail,
     });
 
     if (!error) {
       dispatch({
         type: ACTIONS.AUTH_FLOW,
-        payload: { email: trimmedEmail, code: '' },
+        payload: { email: normalizedEmail, code: '' },
       });
       dispatch({ type: ACTIONS.SUCCESS, payload: data.message });
       navigation.navigate('ForgotPasswordCode');
@@ -83,6 +84,8 @@ const ForgotPasswordEmailScreen: React.FC = () => {
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
           returnKeyType="done"
           style={styles.input}
         />
@@ -90,7 +93,7 @@ const ForgotPasswordEmailScreen: React.FC = () => {
           title="Submit"
           onPress={handleSubmit}
           loading={loading}
-          disabled={!email.trim() || loading}
+          disabled={!normalizeEmail(email) || loading}
           style={styles.submitBtn}
         />
         <AppButton

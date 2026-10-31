@@ -18,6 +18,7 @@ import { useDataContext } from '@/store/useDataContext';
 import { ACTIONS } from '@/store/types';
 import Container from '@/components/layout/container';
 import { storeMultipleData } from '@/utils/helper';
+import { normalizeEmail } from '@/utils/normalize-email';
 import { useTheme } from '@/theme/ThemeProvider';
 import { createAuthStyles } from '@/theme/createScreenStyles';
 
@@ -112,7 +113,7 @@ const SigninScreen: React.FC = () => {
     setButtonLoading(true);
 
     const payload = {
-      email,
+      email: normalizeEmail(email),
       password,
     };
 
@@ -207,6 +208,8 @@ const SigninScreen: React.FC = () => {
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
           returnKeyType="done"
         />
 
