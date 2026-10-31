@@ -1,5 +1,5 @@
 import { GetRequest } from '@/utils/requests';
-import { fetchFileInfoById } from '@/hooks/useFiles';
+import { fetchFileDetails, fetchFileInfoById } from '@/hooks/useFiles';
 import { resolveFileOwnerName } from '@/utils/file-owner-name';
 
 jest.mock('@/utils/requests', () => ({
@@ -7,6 +7,26 @@ jest.mock('@/utils/requests', () => ({
 }));
 
 const mockedGetRequest = GetRequest as jest.MockedFunction<typeof GetRequest>;
+
+const fileFixture = {
+  id: 'file-123',
+  file_name: 'lesson-plan.pdf',
+  file_type: 'pdf',
+  mime_type: 'application/pdf',
+  file_link: 'https://cdn.zedu.chat/lesson-plan.pdf',
+  size: 1024,
+  organisation_id: 'org-1',
+  user_id: 'user-1',
+  folder_id: null,
+  channel_id: 'channel-1',
+  message_id: 'message-1',
+  created_at: '2026-10-30T09:00:00.000Z',
+  updated_at: '2026-10-30T10:00:00.000Z',
+  last_accessed_at: '2026-10-30T10:30:00.000Z',
+  deleted_at: null,
+  access_type: 'public',
+  is_shareable: true,
+};
 
 describe('fetchFileInfoById', () => {
   beforeEach(() => {
@@ -105,5 +125,59 @@ describe('resolveFileOwnerName', () => {
         currentUser: null,
       }),
     ).toBe('Unknown');
+  });
+});
+
+describe('fetchFileDetails', () => {
+  beforeEach(() => {
+    mockedGetRequest.mockReset();
+  });
+
+  it('loads the file and its authoritative owner metadata together', async () => {
+    mockedGetRequest
+      .mockResolvedValueOnce({
+        data: { data: fileFixture },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            owner: 'Ada Lovelace',
+            date_uploaded: '2026-10-30T09:00:00.000Z',
+            last_updated: '2026-10-30T10:00:00.000Z',
+            shared_in: ['mathematics'],
+          },
+        },
+        error: null,
+      });
+
+    await expect(fetchFileDetails('file-123')).resolves.toEqual({
+      file: fileFixture,
+      info: {
+        owner: 'Ada Lovelace',
+        date_uploaded: '2026-10-30T09:00:00.000Z',
+        last_updated: '2026-10-30T10:00:00.000Z',
+        shared_in: ['mathematics'],
+      },
+      error: null,
+    });
+  });
+
+  it('keeps the file available when owner metadata cannot be loaded', async () => {
+    mockedGetRequest
+      .mockResolvedValueOnce({
+        data: { data: fileFixture },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: null,
+        error: 'Owner metadata unavailable',
+      });
+
+    await expect(fetchFileDetails('file-123')).resolves.toEqual({
+      file: fileFixture,
+      info: null,
+      error: null,
+    });
   });
 });

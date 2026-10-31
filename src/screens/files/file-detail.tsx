@@ -16,7 +16,7 @@ import moment from 'moment';
 import Container from '@/components/layout/container';
 import FilePreview from '@/components/files/file-preview';
 import { AppText } from '@/components/ui/text';
-import { fetchFileById } from '@/hooks/useFiles';
+import { fetchFileDetails } from '@/hooks/useFiles';
 import UseGetOrgMembers from '@/services/org/get-org-members';
 import { useDataContext } from '@/store/useDataContext';
 import { Media } from '@/types/thread';
@@ -30,6 +30,7 @@ import { FileStackParamList } from '@/navigation/stacks/files';
 import { ShowNotify } from '@/components/ui/toast';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useFileManagementStyles } from '@/components/files/file-management.styles';
+import { resolveFileOwnerName } from '@/utils/file-owner-name';
 
 type Props = {
   navigation: StackNavigationProp<FileStackParamList, 'FileDetail'>;
@@ -41,10 +42,11 @@ const FileDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const styles = useFileManagementStyles();
   const { fileId } = route.params;
   const { state } = useDataContext();
-  const { orgMembers = [], userChannels = [] } = state;
+  const { orgMembers = [], userChannels = [], user } = state;
   UseGetOrgMembers();
 
   const [file, setFile] = useState<Media | null>(null);
+  const [apiOwner, setApiOwner] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,13 +54,19 @@ const FileDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     let mounted = true;
     const loadFile = async () => {
       setLoading(true);
-      const { file: nextFile, error: fetchError } = await fetchFileById(fileId);
+      const {
+        file: nextFile,
+        info,
+        error: fetchError,
+      } = await fetchFileDetails(fileId);
       if (!mounted) return;
       if (fetchError || !nextFile) {
         setError('Unable to load file details.');
         setFile(null);
+        setApiOwner(null);
       } else {
         setFile(nextFile);
+        setApiOwner(info?.owner || null);
         setError(null);
       }
       setLoading(false);
@@ -71,9 +79,13 @@ const FileDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const ownerName = useMemo(() => {
     if (!file) return 'Unknown';
-    const member = orgMembers.find(item => item.id === file.user_id);
-    return member?.name || member?.username || member?.email || 'Unknown';
-  }, [file, orgMembers]);
+    return resolveFileOwnerName({
+      fileUserId: file.user_id,
+      apiOwner,
+      orgMembers,
+      currentUser: user,
+    });
+  }, [apiOwner, file, orgMembers, user]);
 
   const channelName = useMemo(() => {
     if (!file?.channel_id) return '—';
