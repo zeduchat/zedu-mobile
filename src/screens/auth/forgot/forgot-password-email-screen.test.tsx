@@ -118,4 +118,22 @@ describe('ForgotPasswordEmailScreen', () => {
     });
     expect(mockNavigate).toHaveBeenCalledWith('ForgotPasswordCode');
   });
+
+  it('lowercases the email before sending it and passing it to the code screen', async () => {
+    mockPostRequest.mockResolvedValue({
+      data: { message: 'Reset code sent' },
+      error: null,
+    } as any);
+    const renderer = await renderScreen();
+    await typeEmail(renderer, ' User@Example.com ');
+    await pressSubmit(renderer);
+
+    expect(mockPostRequest).toHaveBeenCalledWith('/auth/password-reset', {
+      email: 'user@example.com',
+    });
+    expect(mockDispatch).toHaveBeenCalledWith({
+      type: ACTIONS.AUTH_FLOW,
+      payload: { email: 'user@example.com', code: '' },
+    });
+  });
 });
