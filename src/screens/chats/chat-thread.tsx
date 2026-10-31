@@ -229,10 +229,7 @@ const ChatThreadScreen = ({ navigation, route }: any) => {
       mentions: mentionsMetadata,
     };
 
-    const { error } = await PostRequest(
-      `/dms/messages/${channel_id}`,
-      payload,
-    );
+    const { error } = await PostRequest(`/dms/messages/${channel_id}`, payload);
     await recordSuccessfulMessageResult(
       state.user?.user_id || state.user?.id,
       error,

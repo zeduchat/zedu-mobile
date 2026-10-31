@@ -46,7 +46,7 @@ export const presentShareZeduPrompt = async (
 const useShareZeduPrompt = (userId?: string) => {
   useFocusEffect(
     useCallback(() => {
-      void presentShareZeduPrompt(userId);
+      presentShareZeduPrompt(userId);
     }, [userId]),
   );
 };

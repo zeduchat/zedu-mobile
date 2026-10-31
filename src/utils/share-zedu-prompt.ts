@@ -56,10 +56,7 @@ export const recordSuccessfulMessage = async (userId: string) => {
     const state = await readState(key);
     const nextState: SharePromptState = {
       ...state,
-      successfulMessageCount: Math.min(
-        5,
-        state.successfulMessageCount + 1,
-      ),
+      successfulMessageCount: Math.min(5, state.successfulMessageCount + 1),
     };
     await AsyncStorage.setItem(key, JSON.stringify(nextState));
   });
