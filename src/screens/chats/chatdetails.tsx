@@ -7,7 +7,6 @@ import React, {
 } from 'react';
 import {
   View,
-  Image,
   FlatList,
   TouchableOpacity,
   Keyboard,
@@ -19,7 +18,9 @@ import Container from '@/components/layout/container';
 import { useTheme } from '@/theme/ThemeProvider';
 import { launchCamera } from 'react-native-image-picker';
 import { ThemedEmojiKeyboard } from '@/components/ui/themed-emoji-keyboard';
-import MessageItem from '@/components/layout/chat/messagItem';
+import MessageItem, {
+  MessageAvatarUser,
+} from '@/components/layout/chat/messagItem';
 import MentionUserBottomSheet, {
   MentionUserBottomSheetRef,
 } from '@/components/layout/chat/mention-user-bottomsheet';
@@ -75,6 +76,11 @@ import {
 } from '@/components/layout/chat/chat-header-menu';
 import { ChatSearchResults } from '@/components/layout/chat/chat-search-results';
 import type { ChannelSearchHit } from '@/services/chat/channel-search';
+import { UserAvatar } from '@/screens/channels/user-avatar';
+import {
+  getFirstUnreadMessageId,
+  getSenderAvatarSlot,
+} from '@/utils/chat-message-layout';
 
 const ChatDetailScreen = ({ navigation }: any) => {
   const { colors } = useTheme();
@@ -127,13 +133,67 @@ const ChatDetailScreen = ({ navigation }: any) => {
   } = state;
   dmsChatRef.current = dmsChat || [];
   const route = useRoute<RouteProp<ChatStackParamList, 'ChatDetails'>>();
-  const { channel_id, fromNotification } = route.params ?? {};
+  const { channel_id, fromNotification, unread_count } = route.params ?? {};
   const participants = Array.isArray(participant) ? participant : [];
   const headerParticipant =
     participants.find(p => p.user_id !== user?.user_id) || participants[0];
-  const { loadMore, isFetchingMore } = UseChatDetails({
+  const { loadMore, isFetchingMore, isInitialLoading } = UseChatDetails({
     channel_id: channel_id || '',
   });
+  // Unread count is captured by the Chats list before the chat is marked as
+  // read; the marker is resolved once per visit so it stays put.
+  const unreadSnapshot = useRef({ count: 0, resolved: false });
+  const [newMarkerId, setNewMarkerId] = useState<string | null>(null);
+
+  useEffect(() => {
+    unreadSnapshot.current = { count: unread_count ?? 0, resolved: false };
+    setNewMarkerId(null);
+    // Only reset when the conversation changes, not when params are re-read.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channel_id]);
+
+  useEffect(() => {
+    const snapshot = unreadSnapshot.current;
+    if (snapshot.resolved || isInitialLoading) return;
+    snapshot.resolved = true;
+    setNewMarkerId(
+      getFirstUnreadMessageId(dmsChat, snapshot.count, user?.user_id),
+    );
+  }, [isInitialLoading, dmsChat, user?.user_id]);
+
+  const scrolledToMarker = useRef<string | null>(null);
+  useEffect(() => {
+    if (!newMarkerId || scrolledToMarker.current === newMarkerId) return;
+    const index = dmsChat.findIndex(
+      (entry: any) => entry.thread_id === newMarkerId,
+    );
+    if (index < 0) return;
+    scrolledToMarker.current = newMarkerId;
+    // Inverted list: viewPosition near 1 puts the marker near the top of the
+    // screen with the new messages below it; offsets clamp at the latest.
+    const timer = setTimeout(() => {
+      flatListRef.current?.scrollToIndex({
+        index,
+        viewPosition: 0.9,
+        animated: false,
+      });
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [newMarkerId, dmsChat]);
+
+  const getAvatarUser = (item: any): MessageAvatarUser =>
+    item.user_id === user?.user_id
+      ? {
+          avatar_url: user?.avatar_url,
+          default_avatar_url: user?.default_avatar_url,
+          name: user?.full_name || user?.username,
+        }
+      : {
+          avatar_url: item.avatar_url || headerParticipant?.avatar_url,
+          default_avatar_url:
+            item.default_avatar_url || headerParticipant?.default_avatar_url,
+          name: item.full_name || item.username || headerParticipant?.username,
+        };
   const { uploadFiles, clearUploads } = useFileUpload();
   const mentionUserSheetRef = useRef<MentionUserBottomSheetRef>(null);
   const [callLoading, setCallLoading] = useState(false);
@@ -783,13 +843,17 @@ const ChatDetailScreen = ({ navigation }: any) => {
             </TouchableOpacity>
 
             <View style={styles.headerAvatarContainer}>
-              <Image
-                source={{
-                  uri:
-                    headerParticipant?.avatar_url ||
-                    headerParticipant?.default_avatar_url,
+              <UserAvatar
+                user={{
+                  avatar_url: headerParticipant?.avatar_url,
+                  default_avatar_url: headerParticipant?.default_avatar_url,
+                  online: headerParticipant?.online,
                 }}
-                style={styles.headerAvatar}
+                size={36}
+                badgeSize={12}
+                badgeRingColor={colors.topNavigation}
+                fallbackName={headerParticipant?.username}
+                disabled
               />
             </View>
             <TouchableOpacity
@@ -801,9 +865,22 @@ const ChatDetailScreen = ({ navigation }: any) => {
                 })
               }
             >
-              <AppText variant="bold" size={15}>
+              <AppText variant="bold" size={15} numberOfLines={1}>
                 {headerParticipant?.username}
               </AppText>
+              {headerParticipant && (
+                <AppText
+                  size={12}
+                  style={[
+                    styles.headerPresenceText,
+                    headerParticipant.online
+                      ? styles.headerPresenceOnline
+                      : styles.headerPresenceOffline,
+                  ]}
+                >
+                  {headerParticipant.online ? 'Online' : 'Offline'}
+                </AppText>
+              )}
             </TouchableOpacity>
 
             <ChatHeaderMenu
@@ -867,6 +944,9 @@ const ChatDetailScreen = ({ navigation }: any) => {
                 onMentionUser={handleMentionUser}
                 editMsgId={editMsgId}
                 onEdit={onEdit}
+                avatarSlot={getSenderAvatarSlot(dmsChat, index)}
+                avatarUser={getAvatarUser(item)}
+                showNewMarker={item.thread_id === newMarkerId}
               />
             </View>
           )}
