@@ -15,6 +15,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import Container from '@/components/layout/container';
 import { useDataContext } from '@/store/useDataContext';
 import { dmGroupUsersAlphabetically } from '@/utils/dm-grouping';
+import { memberMatchesSearch } from '@/utils/participant-search';
 import UseGetOrgMembers from '@/services/org/get-org-members';
 import { PostRequest } from '@/utils/requests';
 import { ACTIONS } from '@/store/types';
@@ -43,10 +44,7 @@ export const GroupAddMembersScreen = ({ navigation }: any) => {
 
   // Memoize filtered and grouped list
   const filteredFlatList = useMemo(
-    () =>
-      (orgMembers || []).filter((u: any) =>
-        u.name?.toLowerCase().includes(search.toLowerCase()),
-      ),
+    () => (orgMembers || []).filter((u: any) => memberMatchesSearch(u, search)),
     [search, orgMembers],
   );
 

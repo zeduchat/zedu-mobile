@@ -113,5 +113,7 @@
 	<false/>
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>$(PRODUCT_NAME) would like to send you notifications.</string>
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<false/>
 </dict>
 </plist>

@@ -7,6 +7,7 @@ import {
   Platform,
   StatusBar,
   Linking,
+  Alert,
 } from 'react-native';
 import { DrawerContentComponentProps } from '@react-navigation/drawer';
 import { AppText } from '@/components/ui/text';
@@ -173,11 +174,14 @@ const WorkspaceDrawer = (props: DrawerContentComponentProps) => {
           <ActionItem
             label="Help"
             icon="help-circle"
-            onPress={() =>
-              Linking.openURL(
-                `${CLIENT_URL || 'https://zedu.chat'}/contact-sales`,
-              )
-            }
+            onPress={async () => {
+              const url = `${CLIENT_URL || 'https://zedu.chat'}/resources`;
+              try {
+                await Linking.openURL(url);
+              } catch {
+                Alert.alert('Error', `Couldn't open ${url}`);
+              }
+            }}
           />
         </View>
       </SafeAreaView>

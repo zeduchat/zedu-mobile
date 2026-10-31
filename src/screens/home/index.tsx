@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Image,
@@ -8,6 +8,7 @@ import {
   FlatList,
   ActivityIndicator,
 } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { ThemedRefreshControl } from '@/components/ui/themed-refresh-control';
 import { AppText } from '@/components/ui/text';
 import { normalize } from '@/utils/normalize';
@@ -25,9 +26,7 @@ import { Chat } from '@/types/chats';
 import { ACTIONS } from '@/store/types';
 import UseGetOrg from '@/services/org/get-org';
 import GeneralNotificationConnection from '@/centrifugoo/general-notification-connection';
-import { OneSignal } from 'react-native-onesignal';
-import { ONESIGNAL_APP_ID } from '@env';
-import { PostRequest, PutRequest } from '@/utils/requests';
+import { PostRequest } from '@/utils/requests';
 import { RootStackParamList } from '@/navigation/navigator';
 import { UserAvatarWithStatus } from '@/components/ui/user-avatar-with-status';
 import { formatPreviewMessage } from '@/utils/message-text';
@@ -54,17 +53,6 @@ const HomeScreen = () => {
     { id: 'Groups', label: `Groups  ${groupCount}` },
     { id: 'Favorites', label: 'Favorites' },
   ];
-
-  useEffect(() => {
-    const getData = async () => {
-      OneSignal.initialize(ONESIGNAL_APP_ID);
-      const deviceToken = await OneSignal.User.pushSubscription.getIdAsync();
-      const payload = { subscription_id: deviceToken };
-
-      await PutRequest('/users/onesignal-subscription-id', payload);
-    };
-    getData();
-  }, []);
 
   const filteredDms = useMemo(() => {
     if (!dms) return [];
@@ -193,6 +181,17 @@ const HomeScreen = () => {
           {loading && search.length > 0 && (
             <ActivityIndicator size="small" color={colors.white} />
           )}
+          {search.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setSearch('')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+              style={styles.searchClear}
+            >
+              <Ionicons name="close-circle" size={18} color={colors.white} />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -267,48 +266,93 @@ const HomeScreen = () => {
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
               renderItem={({ item }) => {
+                const isDM = item.channel_type === 'dm';
+                const participant = isDM ? item.participants?.[0] : null;
+
+                const handleAvatarPress = () => {
+                  if (!isDM || !participant) return;
+                  navigation.navigate('ChatStack', {
+                    screen: 'UserDetailScreen',
+                    params: {
+                      participant,
+                      channel_id: item.channel_id,
+                    },
+                  });
+                };
+
+                const handleChatPress = () => {
+                  if (item.is_suggested) {
+                    handleSuggestNavigate(item);
+                  } else {
+                    handleNavigate(item);
+                  }
+                };
+
                 return (
-                  <TouchableOpacity
-                    style={styles.chatItem}
-                    onPress={() =>
-                      item.is_suggested
-                        ? handleSuggestNavigate(item)
-                        : handleNavigate(item)
-                    }
-                  >
-                    <View style={styles.avatarWrapper}>
-                      {item.channel_type === 'group_dm' ? (
-                        <View style={styles.groupAvatarContainer}>
-                          {item.participants
-                            ?.slice(0, 3)
-                            .map((participant: any, index: number) => (
-                              <Image
-                                key={participant.user_id || index}
-                                source={{
-                                  uri:
-                                    participant.avatar_url ||
-                                    participant.default_avatar_url,
-                                }}
-                                style={[
-                                  styles.groupAvatarItem,
-                                  index === 0 && styles.groupAvatarMain,
-                                  index === 1 && styles.groupAvatarTopRight,
-                                  index === 2 && styles.groupAvatarBottomRight,
-                                ]}
-                              />
-                            ))}
-                        </View>
-                      ) : (
+                  <View style={styles.chatItem}>
+                    {isDM && participant ? (
+                      <TouchableOpacity
+                        style={styles.avatarWrapper}
+                        onPress={handleAvatarPress}
+                        activeOpacity={0.7}
+                        accessibilityLabel={`View ${participant.username}'s profile`}
+                        accessibilityRole="button"
+                        accessibilityHint="Opens user profile"
+                      >
                         <Image
                           source={{
                             uri: item.avatar_url || item.default_avatar_url,
                           }}
                           style={styles.chatAvatar}
                         />
-                      )}
-                    </View>
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={styles.avatarWrapper}>
+                        {item.channel_type === 'group_dm' ? (
+                          <View style={styles.groupAvatarContainer}>
+                            {item.participants
+                              ?.slice(0, 3)
+                              .map((p: any, index: number) => (
+                                <Image
+                                  key={p.user_id || index}
+                                  source={{
+                                    uri: p.avatar_url || p.default_avatar_url,
+                                  }}
+                                  style={[
+                                    styles.groupAvatarItem,
+                                    index === 0 && styles.groupAvatarMain,
+                                    index === 1 && styles.groupAvatarTopRight,
+                                    index === 2 &&
+                                      styles.groupAvatarBottomRight,
+                                  ]}
+                                />
+                              ))}
+                          </View>
+                        ) : (
+                          <Image
+                            source={{
+                              uri: item.avatar_url || item.default_avatar_url,
+                            }}
+                            style={styles.chatAvatar}
+                          />
+                        )}
+                      </View>
+                    )}
 
-                    <View style={styles.chatInfo}>
+                    <TouchableOpacity
+                      style={styles.chatInfo}
+                      onPress={handleChatPress}
+                      activeOpacity={0.7}
+                      accessibilityLabel={
+                        isDM
+                          ? `Open chat with ${item.username}`
+                          : `Open group chat ${item.username}`
+                      }
+                      accessibilityRole="button"
+                      accessibilityHint={
+                        isDM ? 'Opens conversation' : 'Opens group conversation'
+                      }
+                    >
                       <View style={styles.chatHeaderRow}>
                         <AppText
                           variant="bold"
@@ -350,8 +394,8 @@ const HomeScreen = () => {
                           </View>
                         )}
                       </View>
-                    </View>
-                  </TouchableOpacity>
+                    </TouchableOpacity>
+                  </View>
                 );
               }}
               onEndReached={loadMore}

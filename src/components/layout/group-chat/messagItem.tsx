@@ -26,6 +26,7 @@ import {
 } from '../chat/chat-file-attachment';
 import { isVoiceMessageMedia } from '@/utils/voice-message';
 import { isVideoFile } from '@/utils/file-helpers';
+import { PinnedMessageBanner } from '../chat/pinned-message-banner';
 
 const { width } = Dimensions.get('window');
 
@@ -106,6 +107,7 @@ const MessageItem = ({
           key={mediaItem.id}
           activeOpacity={0.9}
           onPress={() => handleMediaPress(mediaItem)}
+          onLongPress={() => onLongPress(item)}
           style={styles.mediaContainer}
         >
           <FastImage
@@ -122,6 +124,7 @@ const MessageItem = ({
           key={mediaItem.id}
           activeOpacity={0.9}
           onPress={() => handleMediaPress(mediaItem)}
+          onLongPress={() => onLongPress(item)}
           style={styles.mediaContainer}
         >
           <View style={styles.videoWrapper}>
@@ -148,6 +151,7 @@ const MessageItem = ({
           file={mediaItem}
           widthRatio={0.65}
           onPress={() => handleFilePress(mediaItem)}
+          onLongPress={() => onLongPress(item)}
         />
       );
     }
@@ -261,7 +265,11 @@ const MessageItem = ({
   //
 
   return (
-    <View>
+    <View
+      style={
+        item.is_pinned ? { backgroundColor: colors.lightYellow } : undefined
+      }
+    >
       {showDateHeader && (
         <View style={styles.dateHeader}>
           <AppText style={styles.dateText}>
@@ -274,6 +282,8 @@ const MessageItem = ({
           </AppText>
         </View>
       )}
+
+      <PinnedMessageBanner item={item} />
 
       <View
         style={[

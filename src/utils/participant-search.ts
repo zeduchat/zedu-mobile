@@ -36,3 +36,28 @@ export function filterParticipantsBySearch<T extends SearchableParticipant>(
     participantMatchesSearch(participant, query),
   );
 }
+
+type SearchableMember = {
+  name?: string;
+  email?: string;
+  username?: string;
+};
+
+/**
+ * Whether an organisation member (the "Add members" pickers) matches the
+ * search by name, email or username, like the web people search. Ignores
+ * case and surrounding spaces; an empty search matches everyone.
+ */
+export function memberMatchesSearch(
+  member: SearchableMember,
+  query: string,
+): boolean {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) {
+    return true;
+  }
+
+  return [member.name, member.email, member.username].some(value =>
+    (value || '').toLowerCase().includes(normalized),
+  );
+}

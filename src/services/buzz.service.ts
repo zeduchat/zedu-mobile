@@ -306,7 +306,7 @@ class BuzzService {
       }
 
       if (!response.data) {
-        const errorMsg = 'Failed to fetch organization buzzes';
+        const errorMsg = 'Failed to fetch organisation buzzes';
         return { buzzes: [], pagination: null, error: errorMsg };
       }
 
@@ -328,7 +328,7 @@ class BuzzService {
 
       if (!isSuccess) {
         const errorMsg =
-          payload.message || 'Failed to fetch organization buzzes';
+          payload.message || 'Failed to fetch organisation buzzes';
         return { buzzes: [], pagination: null, error: errorMsg };
       }
 
@@ -342,7 +342,7 @@ class BuzzService {
         error: null,
       };
     } catch (error: any) {
-      const message = error?.message || 'Error fetching organization buzzes';
+      const message = error?.message || 'Error fetching organisation buzzes';
       return { buzzes: [], pagination: null, error: message };
     }
   }

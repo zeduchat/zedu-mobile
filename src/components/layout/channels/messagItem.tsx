@@ -30,6 +30,7 @@ import { parseChannelEventMessage } from '@/lib/channel-event-message';
 import { ChannelEventMessageBlock } from './channel-event-message-block';
 import { truncateUsernameForChannel } from '@/utils/truncate-username';
 import ReactionDetailsSheet from '../chat/reaction-details';
+import { PinnedMessageBanner } from '../chat/pinned-message-banner';
 
 const { width } = Dimensions.get('window');
 
@@ -168,6 +169,7 @@ const MessageItem = ({
           key={mediaItem.id}
           activeOpacity={0.9}
           onPress={() => handleMediaPress(mediaItem)}
+          onLongPress={() => handlePress(item)}
           style={styles.mediaContainer}
         >
           <FastImage
@@ -184,6 +186,7 @@ const MessageItem = ({
           key={mediaItem.id}
           activeOpacity={0.9}
           onPress={() => handleMediaPress(mediaItem)}
+          onLongPress={() => handlePress(item)}
           style={styles.mediaContainer}
         >
           <View style={styles.videoWrapper}>
@@ -210,6 +213,7 @@ const MessageItem = ({
           file={mediaItem}
           widthRatio={0.65}
           onPress={() => handleFilePress(mediaItem)}
+          onLongPress={() => handlePress(item)}
         />
       );
     }
@@ -252,7 +256,12 @@ const MessageItem = ({
         </View>
       )}
 
-      <View style={[styles.rowContainer]}>
+      <View
+        style={[
+          styles.rowContainer,
+          item.is_pinned ? { backgroundColor: colors.lightYellow } : undefined,
+        ]}
+      >
         <TouchableOpacity
           style={styles.groupAvatarContainer}
           onPress={() => onMentionUser(item.user_id)}
@@ -266,6 +275,7 @@ const MessageItem = ({
         </TouchableOpacity>
 
         <View style={styles.messageColumn}>
+          <PinnedMessageBanner item={item} />
           <TouchableOpacity
             activeOpacity={0.8}
             onLongPress={() => handlePress(item)}

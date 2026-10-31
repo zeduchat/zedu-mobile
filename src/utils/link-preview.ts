@@ -85,12 +85,28 @@ export async function fetchLinkPreview(
     }
 
     const data = (await response.json()) as LinkPreviewData;
+    const title = (data?.title || '').trim();
+    let hostname = '';
+    try {
+      hostname = new URL(href).hostname;
+    } catch {
+      hostname = href;
+    }
+
     const preview =
-      data?.title && data.title !== 'No Title'
+      title && title !== 'No Title'
         ? {
-            title: data.title,
+            title,
             description: data.description || '',
             image: data.image || '',
+            url: data.url || href,
+            siteName: data.siteName || '',
+          }
+        : data?.image
+        ? {
+            title: data.siteName || hostname,
+            description: data.description || '',
+            image: data.image,
             url: data.url || href,
             siteName: data.siteName || '',
           }

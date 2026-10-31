@@ -34,6 +34,9 @@ export function createChatListStyles(colors: ThemeColors) {
       fontSize: normalize(15),
       color: colors.white,
     },
+    searchClear: {
+      marginLeft: 8,
+    },
     orgPic: {
       width: normalize(40),
       height: normalize(40),

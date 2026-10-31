@@ -192,7 +192,7 @@ const GreenRoom = ({ navigation }: GreenRoomProps) => {
   };
 
   return (
-    <Container>
+    <Container safeBottom>
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBackToBuzz} style={styles.headerIcon}>
           <Ionicons

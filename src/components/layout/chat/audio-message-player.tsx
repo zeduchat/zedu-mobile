@@ -54,12 +54,20 @@ export const AudioMessagePlayer = ({
         height: 28,
       },
       bar: { flex: 1 },
-      timer: {
-        color: colors.messageMeta,
-        position: 'absolute' as const,
-        left: 0,
-        bottom: -25,
+      timerRow: {
+        flexDirection: 'row' as const,
+        alignItems: 'center' as const,
+        marginTop: 4,
       },
+      timer: { color: colors.messageMeta },
+      speedChip: {
+        marginLeft: 12,
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 10,
+        backgroundColor: colors.categoryChip,
+      },
+      speedText: { color: colors.textPrimary },
       avatarWrap: { position: 'relative' as const, width: 34, height: 34 },
       avatar: { width: 34, height: 34, borderRadius: 17 },
       micBadge: {
@@ -171,9 +179,23 @@ export const AudioMessagePlayer = ({
           })}
         </View>
 
-        <AppText size={10} style={styles.timer}>
-          {timeLabel}
-        </AppText>
+        <View style={styles.timerRow}>
+          <AppText size={10} style={styles.timer}>
+            {timeLabel}
+          </AppText>
+
+          <TouchableOpacity
+            style={styles.speedChip}
+            onPress={() => voiceNotePlaybackService.cyclePlaybackSpeed()}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`Playback speed ${playback.playbackSpeed}x`}
+          >
+            <AppText size={10} style={styles.speedText}>
+              {`${playback.playbackSpeed}x`}
+            </AppText>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {(item?.avatar_url || item?.default_avatar_url) && (

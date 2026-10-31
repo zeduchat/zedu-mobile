@@ -9,6 +9,7 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view
 import { PostRequest } from '@/utils/requests';
 import { useDataContext } from '@/store/useDataContext';
 import { ACTIONS } from '@/store/types';
+import { isValidEmail } from '@/utils/validation';
 import { useTheme } from '@/theme/ThemeProvider';
 import { createAuthStyles } from '@/theme/createScreenStyles';
 
@@ -21,16 +22,25 @@ const ForgotPasswordEmailScreen: React.FC = () => {
   const { dispatch } = useDataContext();
 
   const handleSubmit = async () => {
+    const trimmedEmail = email.trim();
+    if (!isValidEmail(trimmedEmail)) {
+      dispatch({
+        type: ACTIONS.ERROR,
+        payload: 'Please enter a valid email address',
+      });
+      return;
+    }
+
     setLoading(true);
 
     const { data, error } = await PostRequest('/auth/password-reset', {
-      email: email,
+      email: trimmedEmail,
     });
 
     if (!error) {
       dispatch({
         type: ACTIONS.AUTH_FLOW,
-        payload: { email: email, code: '' },
+        payload: { email: trimmedEmail, code: '' },
       });
       dispatch({ type: ACTIONS.SUCCESS, payload: data.message });
       navigation.navigate('ForgotPasswordCode');
@@ -72,12 +82,15 @@ const ForgotPasswordEmailScreen: React.FC = () => {
           placeholder="Email"
           value={email}
           onChangeText={setEmail}
+          keyboardType="email-address"
+          returnKeyType="done"
           style={styles.input}
         />
         <AppButton
           title="Submit"
           onPress={handleSubmit}
           loading={loading}
+          disabled={!email.trim() || loading}
           style={styles.submitBtn}
         />
         <AppButton

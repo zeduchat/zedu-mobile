@@ -13,6 +13,7 @@ import { createMemberPickerStyles } from '@/theme/createScreenStyles';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Container from '@/components/layout/container';
 import { dmGroupUsersAlphabetically } from '@/utils/dm-grouping';
+import { memberMatchesSearch } from '@/utils/participant-search';
 import UseGetOrgMembers from '@/services/org/get-org-members';
 import { useDataContext } from '@/store/useDataContext';
 import { PostRequest } from '@/utils/requests';
@@ -33,10 +34,7 @@ export const AddMemberScreen = ({ navigation }: any) => {
 
   // Group the dynamic data instead of static BACKEND_USERS
   const filteredFlatList = useMemo(
-    () =>
-      (orgMembers || []).filter((u: any) =>
-        u.name?.toLowerCase().includes(search.toLowerCase()),
-      ),
+    () => (orgMembers || []).filter((u: any) => memberMatchesSearch(u, search)),
     [search, orgMembers],
   );
 

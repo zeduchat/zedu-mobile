@@ -2,7 +2,7 @@ import { navigate } from '@/navigation/root-navigation';
 import { ACTIONS } from '@/store/types';
 import { GetRequest } from '@/utils/requests';
 
-export type MessageNotificationType = 'dm' | 'group_dm' | 'channel';
+export type MessageNotificationType = 'dm' | 'group_dm' | 'channel' | 'thread';
 
 export interface MessageNotificationPayload {
   notification_type: MessageNotificationType;
