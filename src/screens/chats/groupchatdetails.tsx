@@ -63,6 +63,7 @@ import {
   scrollChatToIndex,
 } from '@/utils/scroll-to-pinned-message';
 import type { ResolvedPin } from '@/utils/resolve-pinned-messages';
+import { recordSuccessfulMessageResult } from '@/utils/share-zedu-prompt';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   ChatScrollToBottomButton,
@@ -331,7 +332,14 @@ const GroupChatDetailScreen = ({ navigation, route }: any) => {
       mentions: mentionsMetadata,
     };
 
-    await PostRequest(`/group-dms/channels/${channel_id}/threads`, payload);
+    const { error } = await PostRequest(
+      `/group-dms/channels/${channel_id}/threads`,
+      payload,
+    );
+    await recordSuccessfulMessageResult(
+      state.user?.user_id || state.user?.id,
+      error,
+    );
     dispatch({ type: ACTIONS.CALLBACK, payload: !state.callback });
     clearUploads();
   };

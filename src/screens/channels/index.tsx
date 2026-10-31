@@ -28,6 +28,7 @@ import { useChannels } from '@/services/channels/channel-list';
 import { ChannelPopover } from '@/components/layout/channel-popover';
 import { UserAvatarWithStatus } from '@/components/ui/user-avatar-with-status';
 import { formatChatListTime } from '@/utils/format-chat-list-time';
+import useShareZeduPrompt from '@/hooks/useShareZeduPrompt';
 
 const ChannelHome = () => {
   const navigation = useNavigation();
@@ -36,6 +37,7 @@ const ChannelHome = () => {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const { state, dispatch } = useDataContext();
   const { user, orgData, orgId, channelLoading } = state;
+  useShareZeduPrompt(user?.user_id || user?.id);
   const [search, setSearch] = useState('');
   const { channels, loadingMore, refresh, loadMore } = useChannels(
     orgId,
