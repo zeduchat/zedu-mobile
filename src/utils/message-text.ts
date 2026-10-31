@@ -1,4 +1,4 @@
-import { CLIENT_URL } from '@env';
+import { CLIENT_BASE_URL } from '@/utils/client-url';
 
 export type MessageTextSegment = {
   type: 'text' | 'link';
@@ -1058,7 +1058,7 @@ export const buildMessageShareLink = ({
   orgSlug,
   context = 'dm',
 }: BuildMessageShareLinkParams): string => {
-  const baseUrl = (CLIENT_URL || 'https://zedu.chat').replace(/\/$/, '');
+  const baseUrl = CLIENT_BASE_URL;
   const pathSegment =
     context === 'channel'
       ? 'channels'

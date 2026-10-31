@@ -1,4 +1,4 @@
-import { CLIENT_URL } from '@env';
+import { CLIENT_BASE_URL } from '@/utils/client-url';
 import { ensureHttpsUrl } from '@/utils/link-url';
 import { getPlainMessageText } from '@/utils/message-text';
 import { isDocumentUrl } from '@/utils/document-preview';
@@ -73,7 +73,7 @@ export async function fetchLinkPreview(
     return previewCache.get(href) ?? null;
   }
 
-  const base = (CLIENT_URL || 'https://zedu.chat').replace(/\/$/, '');
+  const base = CLIENT_BASE_URL;
 
   try {
     const response = await fetch(

@@ -19,7 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PutRequest } from '@/utils/requests';
 import { ACTIONS } from '@/store/types';
 import { storeMultipleData } from '@/utils/helper';
-import { CLIENT_URL } from '@env';
+import { CLIENT_BASE_URL } from '@/utils/client-url';
 import FastImage from 'react-native-fast-image';
 import { useTheme } from '@/theme/ThemeProvider';
 import { createWorkspaceDrawerStyles } from '@/theme/createScreenStyles';
@@ -175,7 +175,7 @@ const WorkspaceDrawer = (props: DrawerContentComponentProps) => {
             label="Help"
             icon="help-circle"
             onPress={async () => {
-              const url = `${CLIENT_URL || 'https://zedu.chat'}/resources`;
+              const url = `${CLIENT_BASE_URL}/resources`;
               try {
                 await Linking.openURL(url);
               } catch {

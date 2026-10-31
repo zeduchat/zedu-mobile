@@ -9,7 +9,7 @@ import InvitePeopleScreen from '../invite-screen';
 import { GetRequest, PostRequest } from '../../../utils/requests';
 // The dotenv babel plugin inlines this at transform time (exactly as it does
 // in the screen), so the expectation tracks the value the code under test got.
-import { CLIENT_URL } from '@env';
+import { CLIENT_BASE_URL } from '@/utils/client-url';
 
 jest.mock('../../../utils/requests', () => ({
   GetRequest: jest.fn(),
@@ -140,7 +140,7 @@ test('successful generation enables sharing with the complete URL', async () => 
 
   expect(mockedShare).toHaveBeenCalledTimes(1);
   expect(mockedShare.mock.calls[0][0].message).toContain(
-    `${CLIENT_URL}/invite/abc123`,
+    `${CLIENT_BASE_URL}/invite/abc123`,
   );
 });
 

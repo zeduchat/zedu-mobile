@@ -7,7 +7,7 @@ import { PostRequest } from '@/utils/requests';
 import { TouchableOpacity, View } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { CLIENT_URL } from '@env';
+import { CLIENT_BASE_URL } from '@/utils/client-url';
 import { useTheme } from '@/theme/ThemeProvider';
 import { createBuzzCallControlStyles } from '@/theme/createBuzzStyles';
 import { Clipboard } from 'react-native';
@@ -33,7 +33,7 @@ const MenuOptions = ({ onParticipantsClick }: MenuOptionsProps) => {
   const isHandRaised = localParticipant?.handsRaised ?? false;
 
   const copyToClipboard = async () => {
-    const link = `${CLIENT_URL}/client/buzz/${state?.buzzData?.buzz_code}`;
+    const link = `${CLIENT_BASE_URL}/client/buzz/${state?.buzzData?.buzz_code}`;
     try {
       await Clipboard.setString(link);
       ShowNotify('Success', 'Meeting link copied to clipboard');

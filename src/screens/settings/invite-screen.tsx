@@ -19,7 +19,7 @@ import { GetRequest, PostRequest } from '@/utils/requests';
 import { useDataContext } from '@/store/useDataContext';
 import { ACTIONS } from '@/store/types';
 import { ShowNotify } from '@/components/ui/toast';
-import { CLIENT_URL } from '@env';
+import { CLIENT_BASE_URL } from '@/utils/client-url';
 import { useTheme } from '@/theme/ThemeProvider';
 import { createInviteScreenStyles } from '@/theme/createScreenStyles';
 
@@ -155,8 +155,7 @@ const InvitePeopleScreen = ({ navigation }: any) => {
     }
 
     if (!error && data?.data?.invitation_link) {
-      const baseUrl = CLIENT_URL;
-      const link = `${baseUrl}/${data.data.invitation_link}`;
+      const link = `${CLIENT_BASE_URL}/${data.data.invitation_link}`;
 
       setGeneratedLink(link);
       Clipboard.setString(link);
