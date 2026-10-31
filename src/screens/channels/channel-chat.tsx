@@ -65,6 +65,7 @@ import {
   scrollChatToIndex,
 } from '@/utils/scroll-to-pinned-message';
 import type { ResolvedPin } from '@/utils/resolve-pinned-messages';
+import { recordSuccessfulMessageResult } from '@/utils/share-zedu-prompt';
 import {
   ChatScrollToBottomButton,
   useInvertedChatScrollToBottom,
@@ -482,7 +483,11 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
       mentions: mentionsMetadata,
     };
 
-    await PostRequest(`/threads/${channel_id}`, payload);
+    const { error } = await PostRequest(`/threads/${channel_id}`, payload);
+    await recordSuccessfulMessageResult(
+      state.user?.user_id || state.user?.id,
+      error,
+    );
     dispatch({
       type: ACTIONS.CHANNEL_CALLBACK,
       payload: !state.channelCallback,

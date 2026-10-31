@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   SHARE_PROMPT_STORAGE_PREFIX,
   claimSharePrompt,
+  recordSuccessfulMessageResult,
   recordSuccessfulMessage,
 } from '@/utils/share-zedu-prompt';
 import { clearAllData } from '@/utils/helper';
@@ -83,5 +84,32 @@ describe('share Zedu prompt persistence', () => {
       successfulMessageCount: 1,
       hasSeenPrompt: false,
     });
+  });
+
+  it('counts only successful API send results', async () => {
+    await Promise.all(
+      Array.from({ length: 5 }, () =>
+        recordSuccessfulMessageResult('user-a', null),
+      ),
+    );
+
+    await expect(claimSharePrompt('user-a')).resolves.toBe(true);
+  });
+
+  it('does not count failed API send results', async () => {
+    await Promise.all(
+      Array.from({ length: 5 }, () =>
+        recordSuccessfulMessageResult('user-a', 'Message failed'),
+      ),
+    );
+
+    await expect(claimSharePrompt('user-a')).resolves.toBe(false);
+  });
+
+  it('does not store successful results without a valid account id', async () => {
+    await recordSuccessfulMessageResult(undefined, null);
+    await recordSuccessfulMessageResult(42, null);
+
+    await expect(AsyncStorage.getAllKeys()).resolves.toEqual([]);
   });
 });

@@ -65,6 +65,17 @@ export const recordSuccessfulMessage = async (userId: string) => {
   });
 };
 
+export const recordSuccessfulMessageResult = async (
+  userId: unknown,
+  error: string | null,
+) => {
+  if (error || typeof userId !== 'string' || !userId.trim()) return;
+
+  try {
+    await recordSuccessfulMessage(userId);
+  } catch (_error) {}
+};
+
 export const claimSharePrompt = async (userId: string) => {
   const key = getStorageKey(userId);
   if (!key) return false;

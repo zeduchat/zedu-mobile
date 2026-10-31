@@ -32,6 +32,7 @@ import MentionUserBottomSheet, {
 } from '@/components/layout/chat/mention-user-bottomsheet';
 import { MentionSheet } from '@/components/layout/chat/mention-sheet';
 import { buildMentionHtmlTag } from '@/utils/message-text';
+import { recordSuccessfulMessageResult } from '@/utils/share-zedu-prompt';
 import ThreadScreenHeader from '@/components/layout/chat/thread-screen-header';
 import {
   createScrollToIndexFailedHandler,
@@ -222,7 +223,14 @@ const GroupChatThreadScreen = ({ navigation, route }: any) => {
       mentions: mentionsMetadata,
     };
 
-    await PostRequest(getThreadMessageSendUrl('group_dm', channel_id), payload);
+    const { error } = await PostRequest(
+      getThreadMessageSendUrl('group_dm', channel_id),
+      payload,
+    );
+    await recordSuccessfulMessageResult(
+      state.user?.user_id || state.user?.id,
+      error,
+    );
     dispatch({
       type: getThreadMessageCallbackAction('group_dm'),
       payload: !state.callback,
