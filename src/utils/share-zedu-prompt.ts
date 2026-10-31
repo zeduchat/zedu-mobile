@@ -73,13 +73,22 @@ export const recordSuccessfulMessageResult = async (
   } catch (_error) {}
 };
 
-export const claimSharePrompt = async (userId: string) => {
+export const claimSharePrompt = async (
+  userId: string,
+  shouldClaim: () => boolean = () => true,
+) => {
   const key = getStorageKey(userId);
-  if (!key) return false;
+  if (!key || !shouldClaim()) return false;
 
   return enqueueMutation(async () => {
+    if (!shouldClaim()) return false;
     const state = await readState(key);
-    if (state.successfulMessageCount < 5 || state.hasSeenPrompt) return false;
+    if (
+      !shouldClaim() ||
+      state.successfulMessageCount < 5 ||
+      state.hasSeenPrompt
+    )
+      return false;
 
     await AsyncStorage.setItem(
       key,

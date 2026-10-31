@@ -102,4 +102,15 @@ describe('Share Zedu prompt', () => {
     await presentShareZeduPrompt('user-a');
     expect(alertSpy).not.toHaveBeenCalled();
   });
+
+  it('waits for the next list focus when the current focus ends during eligibility', async () => {
+    await makeEligible();
+
+    await presentShareZeduPrompt('user-a', 'https://zedu.chat', () => false);
+
+    expect(alertSpy).not.toHaveBeenCalled();
+
+    await presentShareZeduPrompt('user-a');
+    expect(alertSpy).toHaveBeenCalledTimes(1);
+  });
 });

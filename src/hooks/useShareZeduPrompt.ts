@@ -15,12 +15,13 @@ export const buildShareZeduMessage = (clientUrl?: string) => {
 export const presentShareZeduPrompt = async (
   userId?: string,
   clientUrl = CLIENT_URL,
+  shouldPresent: () => boolean = () => true,
 ) => {
-  if (!userId) return;
+  if (!userId || !shouldPresent()) return;
 
   try {
-    const shouldShow = await claimSharePrompt(userId);
-    if (!shouldShow) return;
+    const shouldShow = await claimSharePrompt(userId, shouldPresent);
+    if (!shouldShow || !shouldPresent()) return;
 
     Alert.alert(
       'Know someone who would enjoy Zedu?',
@@ -46,7 +47,12 @@ export const presentShareZeduPrompt = async (
 const useShareZeduPrompt = (userId?: string) => {
   useFocusEffect(
     useCallback(() => {
-      presentShareZeduPrompt(userId);
+      let isFocused = true;
+      presentShareZeduPrompt(userId, CLIENT_URL, () => isFocused);
+
+      return () => {
+        isFocused = false;
+      };
     }, [userId]),
   );
 };
