@@ -72,16 +72,32 @@ export const getFileExtension = (
   fileName: string,
   fileType?: string,
 ): string => {
-  const fromName = fileName?.split('.').pop()?.toLowerCase() || '';
+  // Only text after a dot is an extension: "Makefile" and ".gitignore" have
+  // none, so they fall back to the file type.
+  const dot = fileName?.lastIndexOf('.') ?? -1;
+  const fromName = dot > 0 ? fileName.slice(dot + 1).toLowerCase() : '';
   if (fromName) return fromName;
   return (fileType || '').toLowerCase();
 };
 
+const SIZE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB'];
+
 export const formatFileSize = (bytes: number): string => {
   if (!bytes || bytes < 0) return '0 B';
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < SIZE_UNITS.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  // Rounding can reach 1024 (1,048,575 bytes is 1023.999 KB): show the next
+  // unit instead of "1024.00 KB".
+  if (Number(value.toFixed(2)) >= 1024 && unit < SIZE_UNITS.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${value.toFixed(2)} ${SIZE_UNITS[unit]}`;
 };
 
 export const getFileTheme = (fileName: string, fileType?: string) => {

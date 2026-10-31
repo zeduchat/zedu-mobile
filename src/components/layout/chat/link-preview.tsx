@@ -1,20 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Image,
-  Linking,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { AppText } from '@/components/ui/text';
 import { useTheme } from '@/theme/ThemeProvider';
-import { ensureHttpsUrl } from '@/utils/link-url';
+import { openExternalUrl } from '@/utils/open-external-url';
 import {
   extractMessageUrls,
   fetchLinkPreview,
   type LinkPreviewData,
 } from '@/utils/link-preview';
-import { ShowNotify } from '@/components/ui/toast';
 
 type Props = {
   html?: string | null;
@@ -75,17 +68,7 @@ export function MessageLinkPreviews({ html, excludeUrls = [] }: Props) {
   }, [html, excludeKey]);
 
   const openPreview = async (url: string) => {
-    const href = ensureHttpsUrl(url);
-    try {
-      const supported = await Linking.canOpenURL(href);
-      if (supported) {
-        await Linking.openURL(href);
-      } else {
-        ShowNotify('Error', "Don't know how to open this URL: " + href);
-      }
-    } catch {
-      ShowNotify('Error', 'An error occurred while opening the link');
-    }
+    await openExternalUrl(url);
   };
 
   if (previews.length === 0) {

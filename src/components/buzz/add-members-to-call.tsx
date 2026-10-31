@@ -14,6 +14,7 @@ import { ACTIONS } from '@/store/types';
 import { useDataContext } from '@/store/useDataContext';
 import UseGetOrgMembers from '@/services/org/get-org-members';
 import { dmGroupUsersAlphabetically } from '@/utils/dm-grouping';
+import { memberMatchesSearch } from '@/utils/participant-search';
 import FastImage from 'react-native-fast-image';
 
 import { ALPHABETS } from '@/utils/alphabet';
@@ -58,10 +59,7 @@ export const AddMembersToCall = ({
   );
 
   const filteredFlatList = useMemo(
-    () =>
-      inviteableMembers.filter((u: any) =>
-        u.name?.toLowerCase().includes(search.toLowerCase()),
-      ),
+    () => inviteableMembers.filter((u: any) => memberMatchesSearch(u, search)),
     [inviteableMembers, search],
   );
 

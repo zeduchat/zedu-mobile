@@ -16,8 +16,10 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { createSettingsSubScreenStyles } from '@/theme/createScreenStyles';
 import { PutRequest } from '@/utils/requests';
 import { ACTIONS } from '@/store/types';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ChangePasswordScreen = ({ navigation }: any) => {
+  const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const styles = useMemo(() => createSettingsSubScreenStyles(colors), [colors]);
   const { dispatch } = useDataContext();
@@ -33,9 +35,14 @@ const ChangePasswordScreen = ({ navigation }: any) => {
     setPasswords(prev => ({ ...prev, [field]: value }));
   };
 
+  const hasConfirmed = passwords.confirmPassword.length > 0;
+  const passwordsMatch =
+    hasConfirmed && passwords.newPassword === passwords.confirmPassword;
+
+  const isFormValid = Boolean(passwords.oldPassword) && passwordsMatch;
+
   const handleSave = async () => {
-    if (passwords.newPassword !== passwords.confirmPassword) {
-      dispatch({ type: ACTIONS.ERROR, payload: 'Passwords do not match' });
+    if (!isFormValid) {
       return;
     }
 
@@ -62,11 +69,8 @@ const ChangePasswordScreen = ({ navigation }: any) => {
     }
   };
 
-  const isFormValid =
-    passwords.oldPassword && passwords.newPassword && passwords.confirmPassword;
-
   return (
-    <Container>
+    <Container safeBottom>
       <View style={styles.stackHeaderCompact}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -83,16 +87,17 @@ const ChangePasswordScreen = ({ navigation }: any) => {
       </View>
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
             paddingHorizontal: 20,
-            paddingBottom: 20,
             paddingTop: 20,
+            paddingBottom: insets.bottom > 0 ? insets.bottom + 12 : 20,
             flexGrow: 1,
+            justifyContent: 'space-between',
           }}
         >
           <View style={{ marginTop: 10 }}>
@@ -118,36 +123,55 @@ const ChangePasswordScreen = ({ navigation }: any) => {
               onChangeText={val => updateField('confirmPassword', val)}
               placeholder="********"
               secureTextEntry
+              error={
+                hasConfirmed && !passwordsMatch
+                  ? "Passwords don't match"
+                  : undefined
+              }
+              style={passwordsMatch ? styles.passwordMatchInput : undefined}
             />
 
-            <AppText style={styles.noteText}>
-              Note: You would need to login again to effect this change.
-            </AppText>
+            {passwordsMatch && (
+              <AppText size={12} style={styles.passwordMatchText}>
+                ✓ Passwords match
+              </AppText>
+            )}
+
+            <View style={styles.noteBox}>
+              <Image
+                source={require('@/assets/icons/info-circle.png')}
+                style={styles.noteIcon}
+              />
+              <AppText style={[styles.noteText, styles.noteBoxText]}>
+                Note: You would need to login again to effect this change.
+              </AppText>
+            </View>
+          </View>
+
+          <View style={{ marginTop: 28 }}>
+            <TouchableOpacity
+              style={[
+                styles.saveButtonCompact,
+                { width: '100%' },
+                (!isFormValid || isSaving) && styles.disabledButton,
+              ]}
+              activeOpacity={0.8}
+              onPress={handleSave}
+              disabled={!isFormValid || isSaving}
+            >
+              {isSaving && (
+                <ActivityIndicator
+                  size="small"
+                  color={colors.white}
+                  style={{ marginRight: 8 }}
+                />
+              )}
+              <AppText variant="bold" style={styles.saveButtonText}>
+                Save Changes
+              </AppText>
+            </TouchableOpacity>
           </View>
         </ScrollView>
-
-        <View style={styles.bottomActions}>
-          <TouchableOpacity
-            style={[
-              styles.saveButtonCompact,
-              (!isFormValid || isSaving) && styles.disabledButton,
-            ]}
-            activeOpacity={0.8}
-            onPress={handleSave}
-            disabled={!isFormValid || isSaving}
-          >
-            {isSaving && (
-              <ActivityIndicator
-                size="small"
-                color={colors.white}
-                style={{ marginRight: 8 }}
-              />
-            )}
-            <AppText variant="bold" style={styles.saveButtonText}>
-              Save Changes
-            </AppText>
-          </TouchableOpacity>
-        </View>
       </KeyboardAvoidingView>
     </Container>
   );

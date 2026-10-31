@@ -1,5 +1,6 @@
 import { Chat, Group, Participant } from '@/types/chats';
 import { ACTIONS, Action } from './types';
+import { initialAppState } from './initial-state';
 import { OrgMembers } from '@/types/organisation';
 import { Channel, ChannelChat } from '@/types/channel';
 import { Agent } from '@/types/agents';
@@ -89,6 +90,8 @@ export interface AppState {
 
 const reducers = (state: AppState, action: Action): AppState => {
   switch (action.type) {
+    case ACTIONS.RESET_STATE:
+      return initialAppState;
     case ACTIONS.USER:
       return { ...state, user: action.payload };
     case ACTIONS.TOKEN:
@@ -266,6 +269,32 @@ const reducers = (state: AppState, action: Action): AppState => {
         ),
       };
 
+    case ACTIONS.UPDATE_DM_PIN: {
+      const { threadId, is_pin, details } = action.payload;
+      const selectedMsg =
+        state.selectedMsg?.thread_id === threadId
+          ? {
+              ...state.selectedMsg,
+              is_pinned: is_pin,
+              pinned_details: details,
+            }
+          : state.selectedMsg;
+
+      return {
+        ...state,
+        selectedMsg,
+        dmsChat: state.dmsChat.map(message =>
+          message.thread_id === threadId
+            ? {
+                ...message,
+                is_pinned: is_pin,
+                pinned_details: details,
+              }
+            : message,
+        ),
+      };
+    }
+
     case ACTIONS.RESET_DM_THREAD_COUNT:
       return {
         ...state,
@@ -303,12 +332,18 @@ const reducers = (state: AppState, action: Action): AppState => {
         // Remove from current position
         currentDms.splice(dmIndex, 1);
 
+        // Keep conversation identity from the list row. Centrifugo unread payloads
+        // often carry the message sender's avatar/username and would flash the
+        // wrong (e.g. logged-in) user on the home list until silent sync.
         const updatedDm = {
           ...existingDm,
           ...updateData,
           thread_count: updateData.thread_count ?? existingDm.thread_count,
           preview_message:
             updateData.preview_message ?? existingDm.preview_message,
+          avatar_url: existingDm.avatar_url,
+          default_avatar_url: existingDm.default_avatar_url,
+          username: existingDm.username,
           ...(Array.isArray(updateData.participants) && {
             participants: updateData.participants,
           }),
@@ -622,6 +657,32 @@ const reducers = (state: AppState, action: Action): AppState => {
       };
     }
 
+    case ACTIONS.UPDATE_CHANNEL_PIN: {
+      const { threadId, is_pin, details } = action.payload;
+      const selectedMsg =
+        state.selectedMsg?.thread_id === threadId
+          ? {
+              ...state.selectedMsg,
+              is_pinned: is_pin,
+              pinned_details: details,
+            }
+          : state.selectedMsg;
+
+      return {
+        ...state,
+        selectedMsg,
+        channelsChat: state.channelsChat.map(message =>
+          message.thread_id === threadId
+            ? {
+                ...message,
+                is_pinned: is_pin,
+                pinned_details: details,
+              }
+            : message,
+        ),
+      };
+    }
+
     case ACTIONS.RESET_CHANNEL_THREAD_COUNT:
       return {
         ...state,
@@ -730,6 +791,24 @@ const reducers = (state: AppState, action: Action): AppState => {
             : message;
         }),
       };
+
+    case ACTIONS.UPDATE_REPLY_PIN: {
+      const { threadId, is_pin, details } = action.payload;
+
+      return {
+        ...state,
+        replyChat: state.replyChat.map((message: any) => {
+          const messageId = message?.id ?? message?.message_id;
+          return String(messageId) === String(threadId)
+            ? {
+                ...message,
+                is_pinned: is_pin,
+                pinned_details: details,
+              }
+            : message;
+        }),
+      };
+    }
 
     // --------------- AGENTS SECTION --------------------------
 

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { View, FlatList, Keyboard, ActivityIndicator } from 'react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { createChatDetailStyles } from '@/theme/createScreenStyles';
@@ -27,14 +27,28 @@ import { ReplyMessageAction } from '@/components/layout/chat/reply-message-actio
 import ChatBackground from '@/components/layout/chat/chat-background';
 import { ShowNotify } from '@/components/ui/toast';
 import uuid from 'react-native-uuid';
+import { MentionSheet } from '@/components/layout/chat/mention-sheet';
+import { buildMentionHtmlTag } from '@/utils/message-text';
+import { recordSuccessfulMessageResult } from '@/utils/share-zedu-prompt';
 import ThreadScreenHeader from '@/components/layout/chat/thread-screen-header';
+import {
+  createScrollToIndexFailedHandler,
+  recordChatItemHeight,
+  scrollChatToIndex,
+} from '@/utils/scroll-to-pinned-message';
 
 const ChatThreadScreen = ({ navigation, route }: any) => {
   const { colors } = useTheme();
   const styles = useMemo(() => createChatDetailStyles(colors), [colors]);
   const [message, setMessage] = useState('');
   const [isEmojiOpen, setIsEmojiOpen] = useState(false);
+  const [mentionState, setMentionState] = useState<{
+    query: string;
+    pos: number;
+  } | null>(null);
+  const [mentionsMetadata, setMentionsMetadata] = useState<any[]>([]);
   const flatListRef = useRef<FlatList>(null);
+  const hasScrolledToHighlight = useRef(false);
   const actionSheetRef = useRef<any>(null);
   const pickerSheetRef = useRef<any>(null);
   const [selectedMsg, setSelectedMsg] = useState<Channel | null>(null);
@@ -43,6 +57,7 @@ const ChatThreadScreen = ({ navigation, route }: any) => {
     type: 'image' | 'file';
   } | null>(null);
   const [isEditorVisible, setIsEditorVisible] = useState(false);
+  const [highlightMsgId, setHighlightMsgId] = useState<string | null>(null);
   const { state, dispatch } = useDataContext();
   const { handleTyping } = useTyping(state.replySubscription);
   const {
@@ -56,10 +71,12 @@ const ChatThreadScreen = ({ navigation, route }: any) => {
     thread_id,
     channel_id,
     chatType = 'dm',
+    highlight_message_id,
   } = route.params as {
     thread_id: string;
     channel_id: string;
     chatType?: ThreadChatType;
+    highlight_message_id?: string;
   };
 
   const { loadMore, isFetchingMore } = UseReplyChat({
@@ -70,6 +87,33 @@ const ChatThreadScreen = ({ navigation, route }: any) => {
   const { uploadFiles, clearUploads } = useFileUpload();
 
   const [isVoiceUploading, setIsVoiceUploading] = useState(false);
+
+  const handleScrollToIndexFailed = useMemo(
+    () => createScrollToIndexFailedHandler(flatListRef),
+    [],
+  );
+
+  useEffect(() => {
+    if (
+      !highlight_message_id ||
+      hasScrolledToHighlight.current ||
+      !replyChat?.length
+    ) {
+      return;
+    }
+
+    const index = replyChat.findIndex(
+      (msg: any) =>
+        String(msg.id ?? msg.message_id) === String(highlight_message_id),
+    );
+    if (index < 0) return;
+
+    hasScrolledToHighlight.current = true;
+    setHighlightMsgId(String(highlight_message_id));
+    scrollChatToIndex(flatListRef, index, replyChat);
+    const timer = setTimeout(() => setHighlightMsgId(null), 2500);
+    return () => clearTimeout(timer);
+  }, [highlight_message_id, replyChat]);
 
   const handleVoiceRecorded = async (uri: string) => {
     setIsVoiceUploading(true);
@@ -106,12 +150,51 @@ const ChatThreadScreen = ({ navigation, route }: any) => {
     pickerSheetRef.current?.expand();
   };
 
+  const mentionParticipants = useMemo(
+    () => (Array.isArray(participant) ? participant : []),
+    [participant],
+  );
+
+  const handleMentionTrigger = (query: string, pos: number) => {
+    setMentionState({ query, pos });
+  };
+
+  const handleMentionSelect = (selectedUser: any) => {
+    if (!mentionState) return;
+
+    const { pos, query } = mentionState;
+    const mentionStart = pos - query.length - 1;
+
+    const textBefore = message.substring(0, mentionStart);
+    const textAfter = message.substring(pos);
+
+    const newMessage = `${textBefore}@${selectedUser.username} ${textAfter}`;
+
+    setMessage(newMessage);
+
+    setMentionsMetadata(prev => [
+      ...prev,
+      {
+        id: selectedUser.user_id,
+        label: selectedUser.username,
+        type: 'user',
+      },
+    ]);
+
+    setMentionState(null);
+  };
+
   const handleSendMessage = async (content: string, medias: any[] = []) => {
     if (!content.trim() && medias.length === 0) return;
 
     handleTyping(false);
 
-    const formattedContent = `<p>${content}</p>`;
+    let formattedContent = content;
+    mentionsMetadata.forEach(m => {
+      const mentionTag = buildMentionHtmlTag(m);
+      formattedContent = formattedContent.replace(`@${m.label}`, mentionTag);
+    });
+    const finalHtml = `<p>${formattedContent}</p>`;
 
     const optimisticMessage = {
       channels_id: channel_id,
@@ -119,7 +202,7 @@ const ChatThreadScreen = ({ navigation, route }: any) => {
       thread_id: thread_id,
       username: state.user?.username || 'You',
       avatar_url: state.user?.avatar_url,
-      message: formattedContent,
+      message: finalHtml,
       created_at: new Date().toISOString(),
       status: 'pending',
       type: 'message',
@@ -135,16 +218,22 @@ const ChatThreadScreen = ({ navigation, route }: any) => {
     });
 
     setMessage('');
+    setMentionsMetadata([]);
 
     const payload = {
       channels_id: channel_id,
       thread_id: thread_id,
-      content: formattedContent,
+      content: finalHtml,
       media: medias,
       user_id: state.user?.user_id,
+      mentions: mentionsMetadata,
     };
 
-    await PostRequest(`/dms/messages/${channel_id}`, payload);
+    const { error } = await PostRequest(`/dms/messages/${channel_id}`, payload);
+    await recordSuccessfulMessageResult(
+      state.user?.user_id || state.user?.id,
+      error,
+    );
 
     dispatch({
       type: getThreadMessageCallbackAction(chatType),
@@ -221,20 +310,37 @@ const ChatThreadScreen = ({ navigation, route }: any) => {
         data={replyChat}
         inverted
         keyExtractor={item => String(item.id ?? item.message_id)}
-        extraData={replyChat}
+        extraData={[replyChat, highlightMsgId]}
+        onScrollToIndexFailed={handleScrollToIndexFailed}
         renderItem={({ item, index }) => (
-          <ThreadMessageItem
-            item={{
-              ...item,
-              id: item.id ?? item.message_id,
-              text: item.message || '',
-              message: item.message || '',
+          <View
+            onLayout={e =>
+              recordChatItemHeight(
+                item.id ?? item.message_id,
+                e.nativeEvent.layout.height,
+              )
+            }
+            style={{
+              backgroundColor:
+                highlightMsgId &&
+                String(item.id ?? item.message_id) === String(highlightMsgId)
+                  ? colors.chatHighlight
+                  : 'transparent',
             }}
-            index={index}
-            messages={replyChat}
-            inverted={true}
-            onLongPress={() => handleLongPress(item)}
-          />
+          >
+            <ThreadMessageItem
+              item={{
+                ...item,
+                id: item.id ?? item.message_id,
+                text: item.message || '',
+                message: item.message || '',
+              }}
+              index={index}
+              messages={replyChat}
+              inverted={true}
+              onLongPress={() => handleLongPress(item)}
+            />
+          </View>
         )}
         ListFooterComponent={<ThreadItem item={selectedMessage} />}
         contentContainerStyle={styles.listContent}
@@ -279,6 +385,14 @@ const ChatThreadScreen = ({ navigation, route }: any) => {
       )}
 
       <ChatKeyboardAvoidingView>
+        {mentionState && (
+          <MentionSheet
+            query={mentionState.query}
+            participants={mentionParticipants}
+            onSelect={handleMentionSelect}
+          />
+        )}
+
         <ChatInput
           message={message}
           setMessage={setMessage}
@@ -294,6 +408,10 @@ const ChatThreadScreen = ({ navigation, route }: any) => {
           onCloseEmoji={() => setIsEmojiOpen(false)}
           isEmojiOpen={isEmojiOpen}
           onFocus={() => pickerSheetRef.current?.close()}
+          onMentionTrigger={handleMentionTrigger}
+          onMentionCancel={() => {
+            setMentionState(null);
+          }}
         />
 
         {isEmojiOpen && (

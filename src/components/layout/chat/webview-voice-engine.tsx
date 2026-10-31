@@ -11,6 +11,7 @@ type WebViewVoiceEngineProps = {
   remoteUri?: string;
   isPlaying: boolean;
   shouldResume: boolean;
+  playbackSpeed: number;
   onReady: (durationMs: number) => void;
   onProgress: (currentMs: number, durationMs: number) => void;
   onEnded: () => void;
@@ -77,6 +78,10 @@ const buildVoiceHtml = (fileUri: string, remoteUri?: string) => `<!DOCTYPE html>
         startPlayback();
       };
       window.pauseVoice = () => audio.pause();
+      window.setVoiceSpeed = (speed) => {
+        audio.defaultPlaybackRate = speed;
+        audio.playbackRate = speed;
+      };
     </script>
   </body>
 </html>`;
@@ -86,6 +91,7 @@ export const WebViewVoiceEngine = ({
   remoteUri,
   isPlaying,
   shouldResume,
+  playbackSpeed,
   onReady,
   onProgress,
   onEnded,
@@ -118,12 +124,21 @@ export const WebViewVoiceEngine = ({
     const command = shouldResume
       ? 'window.playVoice && window.playVoice();'
       : 'window.restartVoice && window.restartVoice();';
-    webViewRef.current?.injectJavaScript(`${command} true;`);
+    webViewRef.current?.injectJavaScript(
+      `window.setVoiceSpeed && window.setVoiceSpeed(${playbackSpeed}); ${command} true;`,
+    );
   };
 
   useEffect(() => {
     injectPlaybackCommand();
   }, [isPlaying, shouldResume]);
+
+  // Changing the speed mid-playback must not restart the message.
+  useEffect(() => {
+    webViewRef.current?.injectJavaScript(
+      `window.setVoiceSpeed && window.setVoiceSpeed(${playbackSpeed}); true;`,
+    );
+  }, [playbackSpeed]);
 
   const handleMessage = (event: WebViewMessageEvent) => {
     try {

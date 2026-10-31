@@ -1,19 +1,29 @@
 import React, { useCallback, useMemo } from 'react';
-import { Image, Platform, StyleSheet, View } from 'react-native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import {
+  Image,
+  ImageSourcePropType,
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+} from 'react-native';
+import {
+  BottomTabBarButtonProps,
+  createBottomTabNavigator,
+} from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { normalize } from '@/utils/normalize';
 import { navigationBarBottomPadding } from '@/utils/status-bar-inset';
 import HomeScreen from '@/screens/home';
 import ChannelHome from '@/screens/channels';
-import SettingsHome from '@/screens/settings';
+import MoreScreen from '@/screens/more';
 import { useDataContext } from '@/store/useDataContext';
 import { GetRequest } from '@/utils/requests';
 import { useFocusEffect } from '@react-navigation/native';
 import { ACTIONS } from '@/store/types';
 import { BuzzTabStack } from '@/navigation/stacks/buzz/buzz-tab-stack';
 import MentionsScreen from '@/screens/mentions';
-import { clearAllData } from '@/utils/helper';
+import { signOut } from '@/utils/sign-out';
 import { parseOrganisationThreadsResponse } from '@/services/mentions/parse-organisation-threads';
 import { syncRolesAndPermissionsFromApi } from '@/lib/role-permissions';
 import { AppText } from '@/components/ui/text';
@@ -21,8 +31,38 @@ import { formatTabBadgeCount } from '@/utils';
 import { Channel } from '@/types/channel';
 import { Chat } from '@/types/chats';
 import { useTheme } from '@/theme/ThemeProvider';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import { fonts } from '@/theme/typography';
 
 const Tab = createBottomTabNavigator();
+
+// Phosphor icons from the Figma "Nav Tab (mobile)" spec:
+// Regular when inactive, Fill when active.
+const TAB_ICONS: Record<
+  string,
+  { inactive: ImageSourcePropType; active: ImageSourcePropType }
+> = {
+  Chats: {
+    inactive: require('@/assets/tabs/chats.png'),
+    active: require('@/assets/tabs/chats-active.png'),
+  },
+  Channels: {
+    inactive: require('@/assets/tabs/channels.png'),
+    active: require('@/assets/tabs/channels-active.png'),
+  },
+  Threads: {
+    inactive: require('@/assets/tabs/threads.png'),
+    active: require('@/assets/tabs/threads-active.png'),
+  },
+  Buzz: {
+    inactive: require('@/assets/tabs/buzz.png'),
+    active: require('@/assets/tabs/buzz-active.png'),
+  },
+  Settings: {
+    inactive: require('@/assets/tabs/settings.png'),
+    active: require('@/assets/tabs/settings-active.png'),
+  },
+};
 
 const getChannelUnreadCount = (channel: Channel): number => {
   if (channel.thread_count > 0) {
@@ -65,7 +105,6 @@ const TabNavigator = ({
       height:
         Platform.OS === 'ios' ? normalize(85) : normalize(70) + tabBarBottom,
       paddingBottom: tabBarBottom,
-      paddingTop: normalize(8),
     }),
     [colors, tabBarBottom],
   );
@@ -74,8 +113,37 @@ const TabNavigator = ({
     () =>
       StyleSheet.create({
         tabBarLabel: {
-          fontSize: normalize(12),
-          fontWeight: '500',
+          fontSize: normalize(11),
+          fontFamily: fonts.medium,
+        },
+        tabBarButton: {
+          flex: 1,
+        },
+        // Top padding lives inside the button (not on the bar or item
+        // wrapper) so the button starts at the bar's top edge and the
+        // active indicator sits flush against the top border. 5 is the
+        // library's own tab padding, kept so the icon doesn't move.
+        tabBarButtonPadding: {
+          paddingTop: normalize(8) + 5,
+        },
+        tabActiveIndicator: {
+          position: 'absolute',
+          top: 0,
+          alignSelf: 'center',
+          width: normalize(28),
+          height: 3,
+          borderRadius: 2,
+          backgroundColor: colors.primary,
+        },
+        tabIconActive: {
+          width: normalize(24),
+          height: normalize(24),
+          tintColor: colors.primary,
+        },
+        tabIconInactive: {
+          width: normalize(24),
+          height: normalize(24),
+          tintColor: colors.textSecondary,
         },
         tabIconWrap: {
           width: normalize(28),
@@ -91,26 +159,27 @@ const TabNavigator = ({
         },
         tabBadge: {
           position: 'absolute',
-          top: normalize(-4),
-          right: normalize(-10),
-          minWidth: normalize(18),
-          height: normalize(18),
-          borderRadius: normalize(9),
+          top: normalize(-9),
+          left: normalize(17),
+          minWidth: normalize(16),
+          height: normalize(16),
+          borderRadius: normalize(8),
+          borderWidth: 1.5,
+          borderColor: colors.tabBar,
           backgroundColor: colors.primary,
-          paddingHorizontal: normalize(4),
+          paddingHorizontal: normalize(2),
           paddingVertical: 0,
           alignItems: 'center',
           justifyContent: 'center',
         },
         tabBadgeWide: {
-          minWidth: normalize(32),
-          paddingHorizontal: normalize(5),
-          right: normalize(-16),
+          minWidth: normalize(28),
+          paddingHorizontal: normalize(3),
         },
         tabBadgeText: {
           color: colors.white,
           fontSize: normalize(10),
-          lineHeight: normalize(18),
+          lineHeight: normalize(13),
           textAlign: 'center',
           includeFontPadding: false,
           textAlignVertical: 'center',
@@ -217,14 +286,7 @@ const TabNavigator = ({
         if (!error) {
           dispatch({ type: ACTIONS.USER, payload: data?.data });
         } else {
-          await clearAllData();
-
-          // Dispatch everything at once to prevent partial state UI renders
-          dispatch({ type: ACTIONS.TOKEN, payload: null });
-          dispatch({ type: ACTIONS.USER, payload: null });
-          dispatch({ type: ACTIONS.ORG_DATA, payload: null });
-          dispatch({ type: ACTIONS.DMS, payload: [] });
-          dispatch({ type: ACTIONS.DMS_CHAT, payload: { data: [], page: 1 } });
+          await signOut(dispatch);
         }
       };
       getUser();
@@ -242,18 +304,33 @@ const TabNavigator = ({
           dispatch({ type: ACTIONS.ORG_DATA, payload: data?.data });
           syncRolesAndPermissionsFromApi();
         } else {
-          await clearAllData();
-
-          // Dispatch everything at once to prevent partial state UI renders
-          dispatch({ type: ACTIONS.TOKEN, payload: null });
-          dispatch({ type: ACTIONS.USER, payload: null });
-          dispatch({ type: ACTIONS.ORG_DATA, payload: null });
-          dispatch({ type: ACTIONS.DMS, payload: [] });
-          dispatch({ type: ACTIONS.DMS_CHAT, payload: { data: [], page: 1 } });
+          await signOut(dispatch);
         }
       };
       getOrgData();
     }, [dispatch, state?.callback]),
+  );
+
+  const renderTabBarButton = useCallback(
+    ({
+      children,
+      style,
+      ref: _ref,
+      href: _href,
+      pressColor: _pressColor,
+      pressOpacity: _pressOpacity,
+      hoverEffect: _hoverEffect,
+      ...rest
+    }: BottomTabBarButtonProps) => (
+      <Pressable
+        {...rest}
+        style={[tabStyles.tabBarButton, style, tabStyles.tabBarButtonPadding]}
+      >
+        {rest['aria-selected'] && <View style={tabStyles.tabActiveIndicator} />}
+        {children}
+      </Pressable>
+    ),
+    [tabStyles],
   );
 
   return (
@@ -264,24 +341,23 @@ const TabNavigator = ({
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: tabBarStyle,
         tabBarLabelStyle: tabStyles.tabBarLabel,
+        tabBarButton: renderTabBarButton,
         tabBarIcon: ({ focused }: any) => {
-          let iconSource;
-          const iconStyle = {
-            width: normalize(24),
-            height: normalize(24),
-            tintColor: focused ? colors.primary : colors.textSecondary,
-          };
+          const icons = TAB_ICONS[route.name];
+          const iconSource = focused ? icons?.active : icons?.inactive;
+          const iconStyle = focused
+            ? tabStyles.tabIconActive
+            : tabStyles.tabIconInactive;
 
-          if (route.name === 'Chats')
-            iconSource = require('@/assets/tabs/chats.png');
-          else if (route.name === 'Channels')
-            iconSource = require('@/assets/tabs/channels.png');
-          else if (route.name === 'Threads')
-            iconSource = require('@/assets/tabs/mentions.png');
-          else if (route.name === 'Buzz')
-            iconSource = require('@/assets/tabs/buzz.png');
-          else if (route.name === 'Settings')
-            iconSource = require('@/assets/tabs/settings.png');
+          if (route.name === 'More') {
+            return (
+              <Ionicons
+                name="ellipsis-horizontal-circle-outline"
+                size={normalize(26)}
+                color={focused ? colors.primary : colors.textSecondary}
+              />
+            );
+          }
 
           const showTabBadge =
             (route.name === 'Chats' && showChatsTabBadge) ||
@@ -296,7 +372,6 @@ const TabNavigator = ({
               : route.name === 'Threads'
               ? unseenThreadCount
               : 0;
-
           const useBadgedTabIcon =
             route.name === 'Chats' ||
             route.name === 'Channels' ||
@@ -346,11 +421,15 @@ const TabNavigator = ({
         },
       }}
     >
-      <Tab.Screen name="Chats" component={HomeScreen} />
+      <Tab.Screen
+        name="Chats"
+        component={HomeScreen}
+        options={{ tabBarLabel: 'Chat' }}
+      />
       <Tab.Screen name="Channels" component={ChannelHome} />
       <Tab.Screen name="Threads" component={MentionsScreen} />
       <Tab.Screen name="Buzz" component={BuzzTabStack} />
-      <Tab.Screen name="Settings" component={SettingsHome} />
+      <Tab.Screen name="More" component={MoreScreen} />
     </Tab.Navigator>
   );
 };

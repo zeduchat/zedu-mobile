@@ -102,7 +102,7 @@ const OngoingDirectCallScreen = ({ route, navigation }: Props) => {
   };
 
   return (
-    <Container dark>
+    <Container dark safeBottom>
       <DMConnection id={buzzData?.channel_id as string} />
 
       <MeetingRoom

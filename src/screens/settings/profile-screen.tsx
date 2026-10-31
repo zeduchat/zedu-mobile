@@ -16,6 +16,7 @@ import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import AppBottomSheet from '@/components/ui/bottom-sheet';
 import Container from '@/components/layout/container';
 import ImageCropperModal from '@/components/ui/image-cropper-modal';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDataContext } from '@/store/useDataContext';
 import {
   DeleteRequest,
@@ -41,6 +42,7 @@ const LEAVE_ORG_LOSS_ITEMS = [
 ];
 
 const ProfileScreen = ({ navigation }: any) => {
+  const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const styles = useMemo(() => createProfileScreenStyles(colors), [colors]);
   const bottomSheetRef = useRef<any>(null);
@@ -298,7 +300,7 @@ const ProfileScreen = ({ navigation }: any) => {
   };
 
   return (
-    <Container>
+    <Container safeBottom>
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -321,7 +323,10 @@ const ProfileScreen = ({ navigation }: any) => {
       >
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: Math.max(insets.bottom + 40, 60) },
+          ]}
         >
           <View style={styles.photoSection}>
             <View>

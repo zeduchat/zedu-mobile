@@ -31,6 +31,9 @@ export interface Channel {
     started_at: string;
   };
   last_read_at: string;
+  /** Channel-wide top-level message write restriction */
+  is_restricted?: boolean;
+  archived?: boolean;
 }
 
 interface Participant {

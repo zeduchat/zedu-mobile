@@ -15,7 +15,7 @@ const JoinMeetingScreen = () => {
   const [isMicOn, setIsMicOn] = useState(true);
 
   return (
-    <Container>
+    <Container safeBottom>
       <View style={styles.safeArea}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton}>
