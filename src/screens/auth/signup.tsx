@@ -16,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useDataContext } from '@/store/useDataContext';
 import { ACTIONS } from '@/store/types';
 import { validateSignup } from '@/utils/validation';
+import { normalizeEmail } from '@/utils/normalize-email';
 import Container from '@/components/layout/container';
 import { PostRequest } from '@/utils/requests';
 import { storeMultipleData } from '@/utils/helper';
@@ -130,7 +131,7 @@ const SignupScreen: React.FC = () => {
     const formData = {
       accountType,
       orgName,
-      email,
+      email: normalizeEmail(email),
       password,
       country,
     };
@@ -283,6 +284,8 @@ const SignupScreen: React.FC = () => {
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
               returnKeyType="done"
             />
 
@@ -340,6 +343,8 @@ const SignupScreen: React.FC = () => {
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
               returnKeyType="done"
             />
             <AppInput
