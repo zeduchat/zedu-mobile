@@ -30,6 +30,7 @@ import { PostRequest } from '@/utils/requests';
 import { RootStackParamList } from '@/navigation/navigator';
 import { UserAvatarWithStatus } from '@/components/ui/user-avatar-with-status';
 import { formatPreviewMessage } from '@/utils/message-text';
+import useShareZeduPrompt from '@/hooks/useShareZeduPrompt';
 
 const HomeScreen = () => {
   const navigation = useNavigation<DrawerNavigationProp<RootStackParamList>>();
@@ -37,6 +38,7 @@ const HomeScreen = () => {
   const styles = useMemo(() => createChatListStyles(colors), [colors]);
   const { state, dispatch } = useDataContext();
   const { user, orgData, orgId, dms } = state;
+  useShareZeduPrompt(user?.user_id || user?.id);
   const [activeCategory, setActiveCategory] = useState('All');
   const [search, setSearch] = useState('');
   const [_chatLoading, setChatLoading] = useState(false);
