@@ -6,7 +6,7 @@ export type MessageTextSegment = {
   url?: string;
 };
 
-export type MentionKind = 'user' | 'channel';
+export type MentionKind = 'user' | 'channel' | 'channel-ref';
 
 export type MessageRenderSegment =
   | { type: 'text'; content: string }
@@ -15,6 +15,7 @@ export type MessageRenderSegment =
       type: 'mention';
       label: string;
       userId?: string;
+      channelId?: string;
       mentionKind: MentionKind;
     }
   | { type: 'newline' };
@@ -33,6 +34,7 @@ export type RichMessageSegment =
       type: 'mention';
       label: string;
       userId?: string;
+      channelId?: string;
       mentionKind: MentionKind;
     }
   | { type: 'newline' }
@@ -395,11 +397,12 @@ export const parseTiptapHtmlToRichSegments = (
         const start = TOKEN_REGEX.lastIndex;
         const closeIdx = source.slice(start).toLowerCase().indexOf('</span>');
         if (closeIdx >= 0) {
+          const rawText = decodeHtmlEntities(
+            stripHtmlTags(source.slice(start, start + closeIdx)),
+          );
           const label =
             getAttr(attrs, 'data-label') ||
-            decodeHtmlEntities(
-              stripHtmlTags(source.slice(start, start + closeIdx)),
-            ).replace(/^@/, '');
+            rawText.replace(/^[@#]/, '');
           const id = getAttr(attrs, 'data-id');
           const mentionKind = resolveMentionKind({
             mentionType: getAttr(attrs, 'data-mention-type'),
@@ -410,6 +413,7 @@ export const parseTiptapHtmlToRichSegments = (
             type: 'mention',
             label,
             userId: mentionKind === 'channel' ? undefined : id,
+            channelId: mentionKind === 'channel-ref' ? id : undefined,
             mentionKind,
           });
           TOKEN_REGEX.lastIndex = start + closeIdx + '</span>'.length;
@@ -475,7 +479,8 @@ export const hasRichMessageContent = (
 export type ComposerMentionSegment =
   | { type: 'text'; content: string }
   | { type: 'userMention'; content: string }
-  | { type: 'channelMention'; content: string };
+  | { type: 'channelMention'; content: string }
+  | { type: 'channelRefMention'; content: string };
 
 export const isChannelMentionLabel = (label: string): boolean =>
   label.trim().toLowerCase() === 'channel';
@@ -488,6 +493,10 @@ export const resolveMentionKind = (options: {
   const mentionType = String(options.mentionType || '').toLowerCase();
   const id = String(options.id || '').toLowerCase();
   const label = String(options.label || '').toLowerCase();
+
+  if (mentionType === 'channel-ref') {
+    return 'channel-ref';
+  }
 
   if (mentionType === 'channel' || id === 'channel' || label === 'channel') {
     return 'channel';
@@ -506,6 +515,11 @@ export const buildMentionHtmlTag = (mention: {
     id: mention.id,
     label: mention.label,
   });
+
+  if (mentionKind === 'channel-ref') {
+    return `<span class="mention mention-channel-ref" data-type="mention" data-mention-type="channel-ref" data-id="${mention.id}" data-label="${mention.label}" data-mention-suggestion-char="#">#${mention.label}</span>`;
+  }
+
   const mentionClass =
     mentionKind === 'channel' ? 'mention mention-channel' : 'mention';
 
@@ -515,14 +529,28 @@ export const buildMentionHtmlTag = (mention: {
 /** Highlights @channel vs @user mentions while composing channel messages. */
 export const parseComposerMentionSegments = (
   text: string,
-  mentions: Array<{ label: string; type?: string }> = [],
+  mentions: Array<{ id?: string; label: string; type?: string }> = [],
 ): ComposerMentionSegment[] => {
   if (!text) {
     return [];
   }
 
   const userLabels = mentions
-    .filter(mention => resolveMentionKind(mention) !== 'channel')
+    .filter(
+      mention =>
+        mention.type !== 'channel-ref' &&
+        resolveMentionKind(mention) !== 'channel',
+    )
+    .map(mention => mention.label)
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length);
+
+  const channelRefLabels = mentions
+    .filter(
+      mention =>
+        mention.type === 'channel-ref' ||
+        resolveMentionKind(mention) === 'channel-ref',
+    )
     .map(mention => mention.label)
     .filter(Boolean)
     .sort((a, b) => b.length - a.length);
@@ -532,44 +560,91 @@ export const parseComposerMentionSegments = (
 
   while (cursor < text.length) {
     const atIndex = text.indexOf('@', cursor);
-    if (atIndex === -1) {
+    const hashIndex = text.indexOf('#', cursor);
+
+    let nextTriggerIndex = -1;
+    let triggerChar: '@' | '#' | null = null;
+
+    if (atIndex !== -1 && hashIndex !== -1) {
+      if (atIndex < hashIndex) {
+        nextTriggerIndex = atIndex;
+        triggerChar = '@';
+      } else {
+        nextTriggerIndex = hashIndex;
+        triggerChar = '#';
+      }
+    } else if (atIndex !== -1) {
+      nextTriggerIndex = atIndex;
+      triggerChar = '@';
+    } else if (hashIndex !== -1) {
+      nextTriggerIndex = hashIndex;
+      triggerChar = '#';
+    } else {
       segments.push({ type: 'text', content: text.slice(cursor) });
       break;
     }
 
-    if (atIndex > cursor) {
-      segments.push({ type: 'text', content: text.slice(cursor, atIndex) });
+    if (nextTriggerIndex > cursor) {
+      segments.push({
+        type: 'text',
+        content: text.slice(cursor, nextTriggerIndex),
+      });
     }
 
-    const rest = text.slice(atIndex);
-    const channelMatch = rest.match(/^@channel(?=$|[\s.,!?;:])/i);
-    if (channelMatch) {
-      segments.push({ type: 'channelMention', content: channelMatch[0] });
-      cursor = atIndex + channelMatch[0].length;
-      continue;
-    }
+    const rest = text.slice(nextTriggerIndex);
 
-    let matchedUser = false;
-    for (const label of userLabels) {
-      const prefix = `@${label}`;
-      if (
-        rest.toLowerCase().startsWith(prefix.toLowerCase()) &&
-        (rest.length === prefix.length ||
-          /[\s.,!?;:]/.test(rest[prefix.length]))
-      ) {
-        segments.push({ type: 'userMention', content: prefix });
-        cursor = atIndex + prefix.length;
-        matchedUser = true;
-        break;
+    if (triggerChar === '@') {
+      const channelMatch = rest.match(/^@channel(?=$|[\s.,!?;:])/i);
+      if (channelMatch) {
+        segments.push({ type: 'channelMention', content: channelMatch[0] });
+        cursor = nextTriggerIndex + channelMatch[0].length;
+        continue;
       }
-    }
 
-    if (matchedUser) {
-      continue;
-    }
+      let matchedUser = false;
+      for (const label of userLabels) {
+        const prefix = `@${label}`;
+        if (
+          rest.toLowerCase().startsWith(prefix.toLowerCase()) &&
+          (rest.length === prefix.length ||
+            /[\s.,!?;:]/.test(rest[prefix.length]))
+        ) {
+          segments.push({ type: 'userMention', content: prefix });
+          cursor = nextTriggerIndex + prefix.length;
+          matchedUser = true;
+          break;
+        }
+      }
 
-    segments.push({ type: 'text', content: '@' });
-    cursor = atIndex + 1;
+      if (matchedUser) {
+        continue;
+      }
+
+      segments.push({ type: 'text', content: '@' });
+      cursor = nextTriggerIndex + 1;
+    } else if (triggerChar === '#') {
+      let matchedChannel = false;
+      for (const label of channelRefLabels) {
+        const prefix = `#${label}`;
+        if (
+          rest.toLowerCase().startsWith(prefix.toLowerCase()) &&
+          (rest.length === prefix.length ||
+            /[\s.,!?;:]/.test(rest[prefix.length]))
+        ) {
+          segments.push({ type: 'channelRefMention', content: prefix });
+          cursor = nextTriggerIndex + prefix.length;
+          matchedChannel = true;
+          break;
+        }
+      }
+
+      if (matchedChannel) {
+        continue;
+      }
+
+      segments.push({ type: 'text', content: '#' });
+      cursor = nextTriggerIndex + 1;
+    }
   }
 
   return segments;
@@ -587,13 +662,13 @@ export const decodeHtmlEntities = (text: string): string =>
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'");
 
-const MENTION_TRIGGER_REGEX = /(?:^|\s)@([\w.\-_]*)$/;
+const MENTION_TRIGGER_REGEX = /(?:^|\s)([@#])([\w.\-_]*)$/;
 
-/** Returns the active @mention query at the cursor, if any. */
+/** Returns the active @ or # mention query at the cursor, if any. */
 export const getActiveMention = (
   text: string,
   cursorPos: number,
-): { query: string; pos: number } | null => {
+): { trigger: '@' | '#'; query: string; pos: number } | null => {
   const beforeCursor = text.slice(0, Math.max(0, cursorPos));
   const match = beforeCursor.match(MENTION_TRIGGER_REGEX);
   if (!match) {
@@ -601,7 +676,8 @@ export const getActiveMention = (
   }
 
   return {
-    query: match[1] ?? '',
+    trigger: match[1] as '@' | '#',
+    query: match[2] ?? '',
     pos: cursorPos,
   };
 };
@@ -660,18 +736,20 @@ export const parseMessageHtmlForRender = (
       const labelMatch = part.match(/data-label="([^"]*)"/);
       const idMatch = part.match(/data-id="([^"]*)"/);
       const mentionTypeMatch = part.match(/data-mention-type="([^"]*)"/);
-      const label = labelMatch?.[1] || '';
-      const userId = idMatch?.[1];
+      const rawText = decodeHtmlEntities(stripHtmlTags(part));
+      const label = labelMatch?.[1] || rawText.replace(/^[@#]/, '');
+      const id = idMatch?.[1];
       const mentionKind = resolveMentionKind({
         mentionType: mentionTypeMatch?.[1],
-        id: userId,
+        id,
         label,
       });
 
       segments.push({
         type: 'mention',
         label,
-        userId: mentionKind === 'channel' ? undefined : userId,
+        userId: mentionKind === 'channel' ? undefined : id,
+        channelId: mentionKind === 'channel-ref' ? id : undefined,
         mentionKind,
       });
       return;
@@ -795,10 +873,16 @@ export const getPlainMessageText = (html: string): string => {
       // between them) so "@a@b" does not read like a single handle.
       .replace(
         MENTION_SPAN_REGEX,
-        (match: string, label: string, offset: number, source: string) =>
-          NEXT_IS_MENTION_REGEX.test(source.slice(offset + match.length))
-            ? `@${label} `
-            : `@${label}`,
+        (match: string, label: string, offset: number, source: string) => {
+          const isChannelRef =
+            /data-mention-type=["']channel-ref["']/i.test(match) ||
+            /data-mention-suggestion-char=["']#["']/i.test(match) ||
+            /class=["'][^"']*mention-channel-ref/i.test(match);
+          const text = `${isChannelRef ? '#' : '@'}${label}`;
+          return NEXT_IS_MENTION_REGEX.test(source.slice(offset + match.length))
+            ? `${text} `
+            : text;
+        },
       )
       .replace(ANCHOR_REGEX, (_, url: string, label: string) => {
         const text = stripHtmlTags(label).trim();
@@ -960,7 +1044,8 @@ export const tiptapHtmlToMarkdown = (html: string): string => {
     const labelMatch = match.match(/data-label=["']([^"']*)["']/i);
     const idMatch = match.match(/data-id=["']([^"']*)["']/i);
     const mentionTypeMatch = match.match(/data-mention-type=["']([^"']*)["']/i);
-    const label = labelMatch?.[1] || stripHtmlTags(match).replace(/^@/, '');
+    const rawText = decodeHtmlEntities(stripHtmlTags(match));
+    const label = labelMatch?.[1] || rawText.replace(/^[@#]/, '');
     const id = idMatch?.[1];
     const mentionKind = resolveMentionKind({
       mentionType: mentionTypeMatch?.[1],
@@ -968,7 +1053,8 @@ export const tiptapHtmlToMarkdown = (html: string): string => {
       label,
     });
 
-    return `[@${label}](${buildMentionHref({ mentionKind, id, label })})`;
+    const prefix = mentionKind === 'channel-ref' ? '#' : '@';
+    return `[${prefix}${label}](${buildMentionHref({ mentionKind, id, label })})`;
   });
 
   // Fenced code blocks before inline <code>

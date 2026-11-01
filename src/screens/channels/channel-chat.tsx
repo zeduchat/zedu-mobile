@@ -102,6 +102,7 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
   const [mentionState, setMentionState] = useState<{
     query: string;
     pos: number;
+    trigger: '@' | '#';
   } | null>(null);
   const [mentionsMetadata, setMentionsMetadata] = useState<any[]>([]);
   const [isEditorVisible, setIsEditorVisible] = useState(false);
@@ -361,9 +362,18 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
     [channelDetails?.participants, channel?.participants],
   );
 
-  // Open mention picker when @ is typed
-  const handleMentionTrigger = (query: string, pos: number) => {
-    setMentionState({ query, pos });
+  const userChannelsList = useMemo(
+    () => state.userChannels || [],
+    [state.userChannels],
+  );
+
+  // Open mention picker when @ or # is typed
+  const handleMentionTrigger = (
+    query: string,
+    pos: number,
+    trigger: '@' | '#' = '@',
+  ) => {
+    setMentionState({ query, pos, trigger });
   };
 
   const handleMentionSelect = (selectedUser: any) => {
@@ -396,6 +406,97 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
 
     setMentionState(null);
   };
+
+  const handleChannelMentionSelect = (selectedChannel: any) => {
+    if (!mentionState) return;
+
+    const { pos, query } = mentionState;
+    const mentionStart = pos - query.length - 1;
+
+    const textBefore = message.substring(0, mentionStart);
+    const textAfter = message.substring(pos);
+
+    const newMessage = `${textBefore}#${selectedChannel.name} ${textAfter}`;
+    setMessage(newMessage);
+
+    const channelId = String(
+      selectedChannel.channels_id || selectedChannel.channel_id,
+    );
+    const channelLabel = selectedChannel.name;
+
+    setMentionsMetadata(prev => {
+      const alreadyExists = prev.some(
+        m => m.id === channelId && m.type === 'channel-ref',
+      );
+      if (alreadyExists) return prev;
+      return [
+        ...prev,
+        {
+          id: channelId,
+          label: channelLabel,
+          type: 'channel-ref',
+        },
+      ];
+    });
+
+    setMentionState(null);
+  };
+
+  const handleMentionChannel = useCallback(
+    (targetChannelId: string) => {
+      const allKnownChannels = [
+        ...(state.userChannels || []),
+        ...(state.allChannels || []),
+      ];
+      const targetChannel = allKnownChannels.find(
+        (ch: any) =>
+          String(ch.channels_id || ch.channel_id) === String(targetChannelId),
+      );
+
+      if (!targetChannel) {
+        ShowNotify('Info', "You're not a member of this channel");
+        return;
+      }
+
+      dispatch({ type: ACTIONS.CHANNEL, payload: targetChannel });
+      dispatch({
+        type: ACTIONS.CHANNELS_CHAT,
+        payload: { data: targetChannel.preview_thread ?? [], page: 1 },
+      });
+
+      if (targetChannel.thread_count > 0) {
+        dispatch({
+          type: ACTIONS.RESET_CHANNEL_THREAD_COUNT,
+          payload: targetChannel.channels_id || targetChannel.channel_id,
+        });
+      }
+
+      dispatch({
+        type: ACTIONS.CHANNEL_CALLBACK,
+        payload: !state.channelCallback,
+      });
+
+      if (typeof (navigation as any).push === 'function') {
+        (navigation as any).push('ChannelChat', {
+          channel_id: targetChannel.channels_id || targetChannel.channel_id,
+        });
+      } else {
+        navigation.navigate('ChannelStack', {
+          screen: 'ChannelChat',
+          params: {
+            channel_id: targetChannel.channels_id || targetChannel.channel_id,
+          },
+        });
+      }
+    },
+    [
+      dispatch,
+      navigation,
+      state.allChannels,
+      state.channelCallback,
+      state.userChannels,
+    ],
+  );
 
   const [isVoiceUploading, setIsVoiceUploading] = useState(false);
 
@@ -447,8 +548,11 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
     // Construct web-compatible HTML payload
     let formattedContent = content;
     mentionsMetadata.forEach(m => {
-      const mentionTag = buildMentionHtmlTag(m);
-      formattedContent = formattedContent.replace(`@${m.label}`, mentionTag);
+      const prefix = m.type === 'channel-ref' ? '#' : '@';
+      formattedContent = formattedContent.replace(
+        `${prefix}${m.label}`,
+        buildMentionHtmlTag(m),
+      );
     });
 
     const finalHtml = `<p>${formattedContent}</p>`;
@@ -505,8 +609,11 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
     // Construct web-compatible HTML payload
     let formattedContent = content;
     mentionsMetadata.forEach(m => {
-      const mentionTag = buildMentionHtmlTag(m);
-      formattedContent = formattedContent.replace(`@${m.label}`, mentionTag);
+      const prefix = m.type === 'channel-ref' ? '#' : '@';
+      formattedContent = formattedContent.replace(
+        `${prefix}${m.label}`,
+        buildMentionHtmlTag(m),
+      );
     });
 
     const finalHtml = `<p>${formattedContent}</p>`;
@@ -961,6 +1068,7 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
                   messages={channelsChat}
                   onLongPress={() => handleLongPress(item)}
                   onMentionUser={handleMentionUser}
+                  onMentionChannel={handleMentionChannel}
                   editMsgId={editMsgId}
                   onEdit={onEdit}
                 />
@@ -1025,14 +1133,23 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
             <RestrictedChannelBanner />
           ) : (
             <>
-              {mentionState && (
-                <MentionSheet
-                  query={mentionState.query}
-                  showChannelMention
-                  participants={mentionParticipants}
-                  onSelect={handleMentionSelect}
-                />
-              )}
+              {mentionState &&
+                (mentionState.trigger === '#' ? (
+                  <MentionSheet
+                    mode="channel"
+                    query={mentionState.query}
+                    channels={userChannelsList}
+                    onSelect={handleChannelMentionSelect}
+                  />
+                ) : (
+                  <MentionSheet
+                    mode="user"
+                    query={mentionState.query}
+                    showChannelMention
+                    participants={mentionParticipants}
+                    onSelect={handleMentionSelect}
+                  />
+                ))}
 
               <ChatInput
                 message={message}
@@ -1060,6 +1177,8 @@ const ChannelChatScreen = ({ navigation, route }: any) => {
                 onMentionCancel={() => {
                   setMentionState(null);
                 }}
+                highlightMentions
+                composerMentions={mentionsMetadata}
               />
 
               {isEmojiOpen && (

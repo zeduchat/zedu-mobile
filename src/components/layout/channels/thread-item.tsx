@@ -17,7 +17,7 @@ import { isVideoFile } from '@/utils/file-helpers';
 import moment from 'moment';
 import { PinnedMessageBanner } from '../chat/pinned-message-banner';
 
-const ThreadItem = ({ item, onMentionUser }: any) => {
+const ThreadItem = ({ item, onMentionUser, onMentionChannel }: any) => {
   const { colors } = useTheme();
   const styles = useMemo(() => createThreadItemStyles(colors), [colors]);
   const [viewerVisible, setViewerVisible] = useState(false);
@@ -193,6 +193,7 @@ const ThreadItem = ({ item, onMentionUser }: any) => {
                   html={item.message}
                   media={item.media}
                   onMentionUser={onMentionUser}
+                  onMentionChannel={onMentionChannel}
                 />
               </View>
             )}

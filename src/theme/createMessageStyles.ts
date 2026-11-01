@@ -501,6 +501,7 @@ export function createChatInputStyles(colors: ThemeColors) {
       flex: 1,
       paddingTop: Platform.OS === 'ios' ? 10 : 8,
       paddingBottom: Platform.OS === 'ios' ? 10 : 8,
+      paddingHorizontal: 0,
       fontSize: 16,
       color: colors.textPrimary,
     },
@@ -515,28 +516,34 @@ export function createChatInputStyles(colors: ThemeColors) {
       paddingBottom: Platform.OS === 'ios' ? 10 : 8,
       color: colors.textPrimary,
     },
+    composerInputBox: {
+      flex: 1,
+      position: 'relative',
+      justifyContent: 'center',
+    },
     inputOverlay: {
       position: 'absolute',
       left: 0,
-      right: 36,
+      right: 0,
       top: 0,
       bottom: 0,
-      paddingVertical: 8,
       zIndex: 1,
     },
     inputTransparentText: {
       color: 'transparent',
     },
+    composerNormalText: {
+      color: colors.textPrimary,
+      fontSize: 16,
+    },
     composerMentionText: {
       color: colors.primary,
       fontSize: 16,
-      lineHeight: 22,
     },
     composerChannelMentionText: {
       color: colors.channelMentionForeground,
       backgroundColor: colors.channelMentionBackground,
       fontSize: 16,
-      lineHeight: 22,
     },
     emojiBtn: { padding: 4 },
     recordingBar: {

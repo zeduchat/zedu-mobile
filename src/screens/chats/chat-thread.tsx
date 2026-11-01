@@ -155,7 +155,15 @@ const ChatThreadScreen = ({ navigation, route }: any) => {
     [participant],
   );
 
-  const handleMentionTrigger = (query: string, pos: number) => {
+  const handleMentionTrigger = (
+    query: string,
+    pos: number,
+    trigger: '@' | '#' = '@',
+  ) => {
+    // '#' channel linking is only supported in channel-chat.
+    if (trigger === '#') {
+      return;
+    }
     setMentionState({ query, pos });
   };
 

@@ -146,7 +146,15 @@ const ChannelThreadScreen = ({ navigation, route }: any) => {
     [channelDetails?.participants, _channel?.participants],
   );
 
-  const handleMentionTrigger = (query: string, pos: number) => {
+  const handleMentionTrigger = (
+    query: string,
+    pos: number,
+    trigger: '@' | '#' = '@',
+  ) => {
+    // '#' channel linking is only supported in channel-chat.
+    if (trigger === '#') {
+      return;
+    }
     setMentionState({ query, pos });
   };
 
@@ -314,6 +322,47 @@ const ChannelThreadScreen = ({ navigation, route }: any) => {
     }
   };
 
+  const handleMentionChannel = (targetChannelId: string) => {
+    const allKnownChannels = [
+      ...(state.userChannels || []),
+      ...(state.allChannels || []),
+    ];
+    const targetChannel = allKnownChannels.find(
+      (ch: any) =>
+        String(ch.channels_id || ch.channel_id) === String(targetChannelId),
+    );
+
+    if (!targetChannel) {
+      ShowNotify('Info', "You're not a member of this channel");
+      return;
+    }
+
+    dispatch({ type: ACTIONS.CHANNEL, payload: targetChannel });
+    dispatch({
+      type: ACTIONS.CHANNELS_CHAT,
+      payload: { data: targetChannel.preview_thread ?? [], page: 1 },
+    });
+
+    if (targetChannel.thread_count > 0) {
+      dispatch({
+        type: ACTIONS.RESET_CHANNEL_THREAD_COUNT,
+        payload: targetChannel.channels_id || targetChannel.channel_id,
+      });
+    }
+
+    dispatch({
+      type: ACTIONS.CHANNEL_CALLBACK,
+      payload: !state.channelCallback,
+    });
+
+    navigation.navigate('ChannelStack', {
+      screen: 'ChannelChat',
+      params: {
+        channel_id: targetChannel.channels_id || targetChannel.channel_id,
+      },
+    });
+  };
+
   return (
     <Container color={colors.topNavigation}>
       <ReplyConnection id={thread_id as string} />
@@ -361,6 +410,7 @@ const ChannelThreadScreen = ({ navigation, route }: any) => {
               inverted={true}
               onLongPress={() => handleLongPress(item)}
               onMentionUser={handleMentionUser}
+              onMentionChannel={handleMentionChannel}
             />
           </View>
         )}
@@ -368,6 +418,7 @@ const ChannelThreadScreen = ({ navigation, route }: any) => {
           <ThreadItem
             item={selectedMessage}
             onMentionUser={handleMentionUser}
+            onMentionChannel={handleMentionChannel}
           />
         }
         contentContainerStyle={styles.listContent}
