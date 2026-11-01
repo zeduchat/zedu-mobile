@@ -26,7 +26,6 @@ import { Chat } from '@/types/chats';
 import { ACTIONS } from '@/store/types';
 import UseGetOrg from '@/services/org/get-org';
 import GeneralNotificationConnection from '@/centrifugoo/general-notification-connection';
-import StatusConnection from '@/centrifugoo/status-connection';
 import { PostRequest } from '@/utils/requests';
 import { RootStackParamList } from '@/navigation/navigator';
 import { UserAvatarWithStatus } from '@/components/ui/user-avatar-with-status';
@@ -144,7 +143,6 @@ const HomeScreen = () => {
   return (
     <Container color={colors.secondary} dark={true}>
       <GeneralNotificationConnection />
-      <StatusConnection />
       <UseGetOrg />
       <View style={styles.topHeader}>
         <View style={styles.profileTop}>
