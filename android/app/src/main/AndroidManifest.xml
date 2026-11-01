@@ -27,14 +27,22 @@
     android:supportsRtl="true"
     tools:replace="android:allowBackup">
     <meta-data
-      android:name="com.onesignal.NotificationAccentColor.DEFAULT"
-      android:value="FF7141F8" />
-    <meta-data
-      android:name="com.onesignal.BadgeIcon"
+      android:name="com.google.firebase.messaging.default_notification_icon"
       android:resource="@drawable/ic_notification" />
     <meta-data
-      android:name="com.onesignal.NotificationServiceExtension"
-      android:value="net.emerj.zedu.DirectCallNotificationServiceExtension" />
+      android:name="com.google.firebase.messaging.default_notification_color"
+      android:resource="@color/notification_accent"
+      tools:replace="android:resource" />
+    <service
+      android:name="io.invertase.firebase.messaging.ReactNativeFirebaseMessagingService"
+      tools:node="remove" />
+    <service
+      android:name=".ZeduFirebaseMessagingService"
+      android:exported="false">
+      <intent-filter>
+        <action android:name="com.google.firebase.MESSAGING_EVENT" />
+      </intent-filter>
+    </service>
     <receiver
       android:name=".IncomingCallActionReceiver"
       android:exported="false" />

@@ -7,6 +7,11 @@ import { initialAppState } from '@/store/initial-state';
 import { ACTIONS, Action } from '@/store/types';
 import { signOut } from '@/utils/sign-out';
 import { clearAllData } from '@/utils/helper';
+import { unregisterAndroidPushDevice } from '@/services/push-notifications.service';
+
+jest.mock('@/services/push-notifications.service', () => ({
+  unregisterAndroidPushDevice: jest.fn(() => Promise.resolve()),
+}));
 
 jest.mock('@/utils/helper', () => ({
   clearAllData: jest.fn(() => Promise.resolve()),
@@ -35,8 +40,44 @@ describe('RESET_STATE', () => {
 });
 
 describe('signOut', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('clears saved data, then resets the in-memory state', async () => {
     const dispatch = jest.fn();
+
+    await signOut(dispatch);
+
+    expect(clearAllData).toHaveBeenCalledTimes(1);
+    expect(dispatch).toHaveBeenCalledWith({ type: ACTIONS.RESET_STATE });
+  });
+
+  it('unregisters push notifications before clearing credentials', async () => {
+    const dispatch = jest.fn();
+    let finishUnregister!: () => void;
+    jest.mocked(unregisterAndroidPushDevice).mockImplementationOnce(
+      () => new Promise<void>(resolve => (finishUnregister = resolve)),
+    );
+
+    const signingOut = signOut(dispatch);
+
+    expect(unregisterAndroidPushDevice).toHaveBeenCalledTimes(1);
+    expect(clearAllData).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
+
+    finishUnregister();
+    await signingOut;
+
+    expect(clearAllData).toHaveBeenCalledTimes(1);
+    expect(dispatch).toHaveBeenCalledWith({ type: ACTIONS.RESET_STATE });
+  });
+
+  it('still clears the session when push unregistration fails', async () => {
+    const dispatch = jest.fn();
+    jest.mocked(unregisterAndroidPushDevice).mockRejectedValueOnce(
+      new Error('Network unavailable'),
+    );
 
     await signOut(dispatch);
 
