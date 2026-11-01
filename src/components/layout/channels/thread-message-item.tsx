@@ -25,6 +25,7 @@ const ThreadMessageItem = ({
   messages,
   onLongPress,
   onMentionUser,
+  onMentionChannel,
   isGroup,
   inverted = false,
 }: any) => {
@@ -242,6 +243,7 @@ const ThreadMessageItem = ({
                     html={item.message || item.text}
                     media={item.media}
                     onMentionUser={onMentionUser}
+                    onMentionChannel={onMentionChannel}
                   />
                 </View>
               )}

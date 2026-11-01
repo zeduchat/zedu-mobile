@@ -13,10 +13,12 @@ import { MessageContent } from './message-content';
 type Props = {
   data: ForwardedMessageBlockData;
   onMentionUser?: (userId: string) => void;
+  onMentionChannel?: (channelId: string, label: string) => void;
 };
 export const ForwardedMessageBlock: React.FC<Props> = ({
   data,
   onMentionUser,
+  onMentionChannel,
 }) => {
   const { colors } = useTheme();
   const styles = useMemo(() => createForwardedBlockStyles(colors), [colors]);
@@ -71,6 +73,7 @@ export const ForwardedMessageBlock: React.FC<Props> = ({
             html={data.message}
             media={data.media}
             onMentionUser={onMentionUser}
+            onMentionChannel={onMentionChannel}
             textStyle={styles.messageText}
           />
         ) : null}
