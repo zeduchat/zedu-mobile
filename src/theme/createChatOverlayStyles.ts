@@ -659,8 +659,8 @@ export function createThreadItemStyles(colors: ThemeColors) {
       width: 35,
       height: 35,
       borderRadius: 50,
-      borderWidth: 2,
-      borderColor: colors.primary,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     senderNameLabel: { paddingHorizontal: 8, paddingTop: 4, paddingBottom: 2 },
     senderRow: {
