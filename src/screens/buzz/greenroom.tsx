@@ -21,7 +21,7 @@ import { BuzzStackParamList } from '@/navigation/stacks/buzz';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RtcSurfaceView } from 'react-native-agora';
 import { useCallScreen } from '@/hooks/useCallScreen';
-import { CLIENT_URL } from '@env';
+import { CLIENT_BASE_URL } from '@/utils/client-url';
 import Container from '@/components/layout/container';
 import FastImage from 'react-native-fast-image';
 
@@ -169,7 +169,7 @@ const GreenRoom = ({ navigation }: GreenRoomProps) => {
 
   const handleShare = async () => {
     try {
-      const link = `${CLIENT_URL}/${orgData?.name}/buzz/${buzzCode}`;
+      const link = `${CLIENT_BASE_URL}/${orgData?.name}/buzz/${buzzCode}`;
       const _result = await Share.share({
         message: `Join my Buzz call! Use code: ${buzzCode}\n\nOr click this link:`,
         url: link,
@@ -192,7 +192,7 @@ const GreenRoom = ({ navigation }: GreenRoomProps) => {
   };
 
   return (
-    <Container>
+    <Container safeBottom>
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBackToBuzz} style={styles.headerIcon}>
           <Ionicons

@@ -16,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useDataContext } from '@/store/useDataContext';
 import { ACTIONS } from '@/store/types';
 import { validateSignup } from '@/utils/validation';
+import { normalizeEmail } from '@/utils/normalize-email';
 import Container from '@/components/layout/container';
 import { PostRequest } from '@/utils/requests';
 import { storeMultipleData } from '@/utils/helper';
@@ -130,7 +131,7 @@ const SignupScreen: React.FC = () => {
     const formData = {
       accountType,
       orgName,
-      email,
+      email: normalizeEmail(email),
       password,
       country,
     };
@@ -214,7 +215,7 @@ const SignupScreen: React.FC = () => {
                             variant="medium"
                             style={{ color: accountType === 'Organization' ? colors.primary : colors.textSecondary }}
                         >
-                            Organization
+                            Organisation
                         </AppText>
                     </TouchableOpacity>
                 </View> */}
@@ -222,15 +223,15 @@ const SignupScreen: React.FC = () => {
         {accountType === 'Organization' ? (
           <View key="org-form">
             <AppInput
-              label="Organization name"
-              placeholder="Organization name"
+              label="Organisation name"
+              placeholder="Organisation name"
               value={orgName}
               onChangeText={setOrgName}
             />
 
             <View style={styles.inputGap}>
               <AppText variant="medium" size={14} style={styles.labelColor}>
-                Organization location (country or region)
+                Organisation location (country or region)
               </AppText>
 
               <Dropdown
@@ -282,6 +283,10 @@ const SignupScreen: React.FC = () => {
               placeholder="Email"
               value={email}
               onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="done"
             />
 
             <AppInput
@@ -337,6 +342,10 @@ const SignupScreen: React.FC = () => {
               placeholder="Email"
               value={email}
               onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="done"
             />
             <AppInput
               label="Password"

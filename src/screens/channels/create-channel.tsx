@@ -37,6 +37,7 @@ const CreateChannelScreen = ({ navigation }: any) => {
 
     const payload = {
       name: channelName,
+      description: description.trim(),
       organisation_id: orgId,
       is_private: channelType === 'Private' ? true : false,
       Username: user?.username || user?.email,

@@ -24,7 +24,7 @@ import BuzzService from '@/services/buzz.service';
 import { ShowNotify } from '@/components/ui/toast';
 import { UserAvatarWithStatus } from '@/components/ui/user-avatar-with-status';
 import { ACTIONS } from '@/store/types';
-import { CLIENT_URL } from '@env';
+import { CLIENT_BASE_URL } from '@/utils/client-url';
 import { BuzzPopover } from '@/components/layout/buzz/buzz-popover';
 
 const { width } = Dimensions.get('window');
@@ -75,7 +75,7 @@ const BuzzHome = () => {
       const buzzData = joinResult.data;
 
       // Store the meeting code for later reference
-      const link = `${CLIENT_URL}/${orgData?.name}/buzz/${buzzData.buzz_code}`;
+      const link = `${CLIENT_BASE_URL}/${orgData?.name}/buzz/${buzzData.buzz_code}`;
       setMeetingCode(link);
 
       setPopoverVisible(false);

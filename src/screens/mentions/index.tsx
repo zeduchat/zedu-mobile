@@ -19,6 +19,7 @@ import { useDataContext } from '@/store/useDataContext';
 import { RootStackParamList } from '@/navigation/navigator';
 import { ThemedRefreshControl } from '@/components/ui/themed-refresh-control';
 import { useMentions, MentionApiItem } from '@/services/mentions/useMentions';
+import { formatPreviewMessage } from '@/utils/message-text';
 import moment from 'moment';
 import FontAwesome5Icon from 'react-native-vector-icons/FontAwesome5';
 import { ACTIONS } from '@/store/types';
@@ -120,7 +121,7 @@ const MentionsScreen = () => {
           <View style={styles.chatFooterRow}>
             <AppText size={14} numberOfLines={1} style={styles.chatMsg}>
               {item.previe_message
-                ? item.previe_message.replace(/<[^>]*>?/gm, '')
+                ? formatPreviewMessage(item.previe_message)
                 : ''}
             </AppText>
             {/* {lastMessage?.message_count > 0 && (

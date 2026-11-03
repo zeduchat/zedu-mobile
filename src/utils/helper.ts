@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SHARE_PROMPT_STORAGE_PREFIX } from '@/utils/share-zedu-prompt';
 
 //
 export const storeToken = async (key: string, value: any) => {
@@ -65,7 +66,22 @@ export const retrieveMultipleData = async (keys: string[]) => {
 
 export const clearAllData = async () => {
   try {
+    const keys = await AsyncStorage.getAllKeys();
+    const promptKeys = keys.filter(key =>
+      key.startsWith(SHARE_PROMPT_STORAGE_PREFIX),
+    );
+    const promptEntries = promptKeys.length
+      ? await AsyncStorage.multiGet(promptKeys)
+      : [];
+
     await AsyncStorage.clear();
+
+    const preservedEntries = promptEntries.filter(
+      (entry): entry is [string, string] => entry[1] !== null,
+    );
+    if (preservedEntries.length) {
+      await AsyncStorage.multiSet(preservedEntries);
+    }
   } catch (e) {
     console.error('Error clearing local storage:', e);
   }

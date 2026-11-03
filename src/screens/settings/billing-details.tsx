@@ -6,7 +6,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Container from '@/components/layout/container';
 import { useDataContext } from '@/store/useDataContext';
-import { CLIENT_URL } from '@env';
+import { CLIENT_BASE_URL } from '@/utils/client-url';
 import { useTheme } from '@/theme/ThemeProvider';
 import { createBillingScreenStyles } from '@/theme/createScreenStyles';
 
@@ -127,9 +127,7 @@ const BillingDetailsScreen = ({ route, navigation }: any) => {
 
         <TouchableOpacity
           style={styles.outlineBtn}
-          onPress={() =>
-            Linking.openURL(`${CLIENT_URL || 'https://zedu.chat'}/contact`)
-          }
+          onPress={() => Linking.openURL(`${CLIENT_BASE_URL}/contact`)}
         >
           <AppText variant="bold" style={styles.outlineBtnText}>
             Contact Sales

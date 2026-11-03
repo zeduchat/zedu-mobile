@@ -11,6 +11,8 @@ import BrowseChannel from '@/screens/channels/browse-channels';
 import { AddNewMembersScreen } from '@/screens/channels/add-new-members';
 import MediaGalleryScreen from '@/screens/chats/media-gallery';
 import ChannelUserDetailScreen from '@/screens/channels/channel-user-detail';
+import PinnedMessagesScreen from '@/screens/chats/pinned-messages';
+import type { PinScope } from '@/utils/resolve-pinned-messages';
 
 export type ChannelStackParamList = {
   ChannelList: undefined;
@@ -27,6 +29,7 @@ export type ChannelStackParamList = {
   ChannelThread: {
     channel_id: string;
     thread_id: string;
+    highlight_message_id?: string;
   };
   CreateChannel: undefined;
   BrowseChannel: undefined;
@@ -41,6 +44,10 @@ export type ChannelStackParamList = {
   MediaGalleryScreen: {
     channel_id?: string;
     preview_media?: any[];
+  };
+  PinnedMessages: {
+    channel_id: string;
+    scope?: PinScope;
   };
   NotificationPreference: {
     channel_id: string;
@@ -67,6 +74,7 @@ export const ChannelStack = () => (
     <Stack.Screen name="AddMembers" component={AddMembersScreen} />
     <Stack.Screen name="AddNewMembers" component={AddNewMembersScreen} />
     <Stack.Screen name="MediaGalleryScreen" component={MediaGalleryScreen} />
+    <Stack.Screen name="PinnedMessages" component={PinnedMessagesScreen} />
     <Stack.Screen name="UserDetails" component={ChannelUserDetailScreen} />
     <Stack.Screen
       name="NotificationPreference"

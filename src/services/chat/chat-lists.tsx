@@ -21,6 +21,10 @@ export const useDMs = (
     dmsRef.current = dms;
   }, [dms, callback]);
 
+  // Each request gets a number. Only the newest request's answer is used, so a
+  // slow reply can't replace the list after a newer search or refresh.
+  const latestRequestRef = useRef(0);
+
   const fetchDMs = useCallback(
     async (isInitial: boolean = true, searchQuery: string = search) => {
       if (!orgId) return;
@@ -33,10 +37,13 @@ export const useDMs = (
       //     setLoadingMore(true);
       // }
 
+      const requestId = ++latestRequestRef.current;
       const currentPage = isInitial ? 1 : page;
       const url = `/organisations/${orgId}/dms?page=${currentPage}&limit=${limit}&search=${searchQuery}`;
 
       const { data: response, error } = await GetRequest(url);
+
+      if (requestId !== latestRequestRef.current) return;
 
       if (!error && response) {
         const newList = response.data || [];
@@ -77,6 +84,9 @@ export const useDMs = (
   );
 
   useEffect(() => {
+    // Drop any answer still on its way for the previous search.
+    latestRequestRef.current += 1;
+
     if (search) {
       setLoading(true);
       // dispatch({ type: ACTIONS.DMS, payload: [] });

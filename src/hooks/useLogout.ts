@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ACTIONS } from '@/store/types';
 import { useDataContext } from '@/store/useDataContext';
 import { clearAllData } from '@/utils/helper';
+import { unregisterAndroidPushToken } from '@/services/android-fcm.service';
 
 export const useLogout = () => {
   const [loading, setLoading] = useState(false);
@@ -11,6 +12,7 @@ export const useLogout = () => {
     try {
       setLoading(true);
 
+      await unregisterAndroidPushToken();
       await clearAllData();
 
       dispatch({ type: ACTIONS.TOKEN, payload: null });

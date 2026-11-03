@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   View,
   Image,
@@ -14,13 +14,12 @@ import { normalize } from '@/utils/normalize';
 import Container from '@/components/layout/container';
 import { useTheme } from '@/theme/ThemeProvider';
 import { createChatListStyles } from '@/theme/createChatListStyles';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import FontAwesome5Icon from 'react-native-vector-icons/FontAwesome5';
 import Feather from 'react-native-vector-icons/Feather';
 import ChannelOnboardingSheet from './channel-onboarding';
 import AppBottomSheet from '@/components/ui/bottom-sheet';
 import { useDataContext } from '@/store/useDataContext';
-import moment from 'moment';
 import { formatCount } from '@/utils';
 import { ACTIONS } from '@/store/types';
 import { Channel } from '@/types/channel';
@@ -28,6 +27,8 @@ import ChatSkeleton from '@/components/skeleton/chat-skeleton';
 import { useChannels } from '@/services/channels/channel-list';
 import { ChannelPopover } from '@/components/layout/channel-popover';
 import { UserAvatarWithStatus } from '@/components/ui/user-avatar-with-status';
+import { formatChatListTime } from '@/utils/format-chat-list-time';
+import useShareZeduPrompt from '@/hooks/useShareZeduPrompt';
 
 const ChannelHome = () => {
   const navigation = useNavigation();
@@ -36,10 +37,19 @@ const ChannelHome = () => {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const { state, dispatch } = useDataContext();
   const { user, orgData, orgId, channelLoading } = state;
+  useShareZeduPrompt(user?.user_id || user?.id);
   const [search, setSearch] = useState('');
   const { channels, loadingMore, refresh, loadMore } = useChannels(
     orgId,
     search,
+  );
+
+  // The channel list lives in shared state that other screens refill with the
+  // full list, so clear the search when leaving to keep the box and list in sync.
+  useFocusEffect(
+    useCallback(() => {
+      return () => setSearch('');
+    }, []),
   );
 
   const onboardingSheetRef = useRef<any>(null);
@@ -195,14 +205,7 @@ const ChannelHome = () => {
                           size={12}
                           style={[styles.chatTime, { marginRight: 0 }]}
                         >
-                          {item?.last_read_at
-                            ? moment(item.last_read_at).calendar(null, {
-                                dsameDay: 'h:mm a',
-                                lastDay: '[Yesterday]',
-                                lastWeek: 'dddd',
-                                sameElse: 'DD/MM/YYYY',
-                              })
-                            : null}
+                          {formatChatListTime(item?.last_read_at)}
                         </AppText>
                       </View>
                       <View style={styles.chatFooterRow}>

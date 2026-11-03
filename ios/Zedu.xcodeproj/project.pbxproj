@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 70;
+	objectVersion = 55;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -38,6 +38,8 @@
 		E2F000072EFBE05B00899B98 /* CallPiPWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2F000062EFBE05B00899B98 /* CallPiPWidgetView.swift */; };
 		E2F000092EFBE05B00899B99 /* CallOverlayAgoraBridge.mm in Sources */ = {isa = PBXBuildFile; fileRef = E2F000082EFBE05B00899B99 /* CallOverlayAgoraBridge.mm */; };
 		E2F0000D2EFBE05B00899B9D /* OngoingCallKitNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2F0000E2EFBE05B00899B9D /* OngoingCallKitNotifications.swift */; };
+		E3F100022EFBE05B00899C01 /* FirebasePushModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3F100012EFBE05B00899C01 /* FirebasePushModule.swift */; };
+		E3F100042EFBE05B00899C01 /* FirebasePushModule.m in Sources */ = {isa = PBXBuildFile; fileRef = E3F100032EFBE05B00899C01 /* FirebasePushModule.m */; };
 		EA7EF34A2EFBE05B00899B89 /* rec_start.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = EA7EF3492EFBE05B00899B89 /* rec_start.mp3 */; };
 		EACA832C2F0FD25800AA97B1 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = EACA832B2F0FD25800AA97B1 /* GoogleService-Info.plist */; };
 		EAD9EA172F13273300FA25E4 /* OneSignalNotificationServiceExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = EAD9EA102F13273300FA25E4 /* OneSignalNotificationServiceExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -117,6 +119,8 @@
 		E2F0000B2EFBE05B00899B9B /* CallOverlayAgoraBridge+Swift.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "CallOverlayAgoraBridge+Swift.h"; path = "Zedu/CallOverlayAgoraBridge+Swift.h"; sourceTree = "<group>"; };
 		E2F0000C2EFBE05B00899B9C /* Zedu-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "Zedu-Bridging-Header.h"; path = "Zedu/Zedu-Bridging-Header.h"; sourceTree = "<group>"; };
 		E2F0000E2EFBE05B00899B9D /* OngoingCallKitNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OngoingCallKitNotifications.swift; path = Zedu/OngoingCallKitNotifications.swift; sourceTree = "<group>"; };
+		E3F100012EFBE05B00899C01 /* FirebasePushModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = FirebasePushModule.swift; path = Zedu/FirebasePushModule.swift; sourceTree = "<group>"; };
+		E3F100032EFBE05B00899C01 /* FirebasePushModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = FirebasePushModule.m; path = Zedu/FirebasePushModule.m; sourceTree = "<group>"; };
 		EA7EF3492EFBE05B00899B89 /* rec_start.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = rec_start.mp3; sourceTree = "<group>"; };
 		EACA832B2F0FD25800AA97B1 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		EAD9EA0B2F13268D00FA25E4 /* Zedu.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = Zedu.entitlements; path = Zedu/Zedu.entitlements; sourceTree = "<group>"; };
@@ -129,14 +133,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		EAD9EA182F13273300FA25E4 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		EAD9EA182F13273300FA25E4 /* Exceptions for "OneSignalNotificationServiceExtension" folder in "OneSignalNotificationServiceExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
 			target = EAD9EA0F2F13273300FA25E4 /* OneSignalNotificationServiceExtension */;
 		};
-		ESC1EA182F13273300FA25E4 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		ESC1EA182F13273300FA25E4 /* Exceptions for "ScreenSharing" folder in "ScreenSharing" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -146,8 +150,30 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		EAD9EA112F13273300FA25E4 /* OneSignalNotificationServiceExtension */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (EAD9EA182F13273300FA25E4 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = OneSignalNotificationServiceExtension; sourceTree = "<group>"; };
-		ESC1EA112F13273300FA25E4 /* ScreenSharing */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (ESC1EA182F13273300FA25E4 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = ScreenSharing; sourceTree = "<group>"; };
+		EAD9EA112F13273300FA25E4 /* OneSignalNotificationServiceExtension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				EAD9EA182F13273300FA25E4 /* Exceptions for "OneSignalNotificationServiceExtension" folder in "OneSignalNotificationServiceExtension" target */,
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = OneSignalNotificationServiceExtension;
+			sourceTree = "<group>";
+		};
+		ESC1EA112F13273300FA25E4 /* ScreenSharing */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				ESC1EA182F13273300FA25E4 /* Exceptions for "ScreenSharing" folder in "ScreenSharing" target */,
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = ScreenSharing;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -203,6 +229,8 @@
 				E1F000182EFBE05B00899B94 /* IncomingCallCoordinator.swift */,
 				E1F0001A2EFBE05B00899B95 /* IncomingCallModule.swift */,
 				E1F0001C2EFBE05B00899B96 /* IncomingCallModule.m */,
+				E3F100012EFBE05B00899C01 /* FirebasePushModule.swift */,
+				E3F100032EFBE05B00899C01 /* FirebasePushModule.m */,
 				E1F0001E2EFBE05B00899B97 /* IncomingCallNotificationManager.swift */,
 				E1F000202EFBE05B00899B98 /* IncomingCallDarwinObserver.swift */,
 				E1F000222EFBE05B00899B99 /* IncomingCallPushKitManager.swift */,
@@ -461,13 +489,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Zedu/Pods-Zedu-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Zedu/Pods-Zedu-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -504,13 +528,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Zedu/Pods-Zedu-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Zedu/Pods-Zedu-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -556,6 +576,8 @@
 				E1F000192EFBE05B00899B94 /* IncomingCallCoordinator.swift in Sources */,
 				E1F0001B2EFBE05B00899B95 /* IncomingCallModule.swift in Sources */,
 				E1F0001D2EFBE05B00899B96 /* IncomingCallModule.m in Sources */,
+				E3F100022EFBE05B00899C01 /* FirebasePushModule.swift in Sources */,
+				E3F100042EFBE05B00899C01 /* FirebasePushModule.m in Sources */,
 				E1F0001F2EFBE05B00899B97 /* IncomingCallNotificationManager.swift in Sources */,
 				E1F000212EFBE05B00899B98 /* IncomingCallDarwinObserver.swift in Sources */,
 				E1F000232EFBE05B00899B99 /* IncomingCallPushKitManager.swift in Sources */,
@@ -609,7 +631,7 @@
 				CODE_SIGN_ENTITLEMENTS = Zedu/ZeduDebug.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 36CFL54G89;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Zedu/Info.plist;
@@ -620,7 +642,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.7;
+				MARKETING_VERSION = 1.0.9;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -646,7 +668,7 @@
 				CODE_SIGN_ENTITLEMENTS = Zedu/Zedu.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 36CFL54G89;
 				ENABLE_BITCODE = NO;
@@ -658,7 +680,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.7;
+				MARKETING_VERSION = 1.0.9;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -833,7 +855,7 @@
 				CODE_SIGN_ENTITLEMENTS = OneSignalNotificationServiceExtension/OneSignalNotificationServiceExtension.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 36CFL54G89;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -849,7 +871,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.0.7;
+				MARKETING_VERSION = 1.0.9;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = "net.emerj.zedu.OneSignalNotificationServiceExtension-";
@@ -878,7 +900,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 36CFL54G89;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -894,7 +916,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.0.7;
+				MARKETING_VERSION = 1.0.9;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = "net.emerj.zedu.OneSignalNotificationServiceExtension-";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -919,21 +941,21 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 36CFL54G89;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"${SRCROOT}/Pods/AgoraVideo_Special_iOS/AgoraReplayKitExtension.xcframework/ios-arm64\"",
-					"\"${SRCROOT}/Pods/AgoraVideo_Special_iOS/AgoraReplayKitExtension.xcframework/ios-arm64_x86_64-simulator\"",
+					"\"${SRCROOT}/Pods/AgoraRtcEngine_iOS/AgoraReplayKitExtension.xcframework/ios-arm64\"",
+					"\"${SRCROOT}/Pods/AgoraRtcEngine_iOS/AgoraReplayKitExtension.xcframework/ios-arm64_x86_64-simulator\"",
 				);
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"${SRCROOT}/Pods/AgoraVideo_Special_iOS/AgoraReplayKitExtension.xcframework/ios-arm64/AgoraReplayKitExtension.framework/Headers\"",
-					"\"${SRCROOT}/Pods/AgoraVideo_Special_iOS/AgoraReplayKitExtension.xcframework/ios-arm64_x86_64-simulator/AgoraReplayKitExtension.framework/Headers\"",
+					"\"${SRCROOT}/Pods/AgoraRtcEngine_iOS/AgoraReplayKitExtension.xcframework/ios-arm64/AgoraReplayKitExtension.framework/Headers\"",
+					"\"${SRCROOT}/Pods/AgoraRtcEngine_iOS/AgoraReplayKitExtension.xcframework/ios-arm64_x86_64-simulator/AgoraReplayKitExtension.framework/Headers\"",
 				);
 				INFOPLIST_FILE = ScreenSharing/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ScreenSharing;
@@ -945,7 +967,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.0.7;
+				MARKETING_VERSION = 1.0.9;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				OTHER_LDFLAGS = (
@@ -979,21 +1001,21 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 36CFL54G89;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"${SRCROOT}/Pods/AgoraVideo_Special_iOS/AgoraReplayKitExtension.xcframework/ios-arm64\"",
-					"\"${SRCROOT}/Pods/AgoraVideo_Special_iOS/AgoraReplayKitExtension.xcframework/ios-arm64_x86_64-simulator\"",
+					"\"${SRCROOT}/Pods/AgoraRtcEngine_iOS/AgoraReplayKitExtension.xcframework/ios-arm64\"",
+					"\"${SRCROOT}/Pods/AgoraRtcEngine_iOS/AgoraReplayKitExtension.xcframework/ios-arm64_x86_64-simulator\"",
 				);
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"${SRCROOT}/Pods/AgoraVideo_Special_iOS/AgoraReplayKitExtension.xcframework/ios-arm64/AgoraReplayKitExtension.framework/Headers\"",
-					"\"${SRCROOT}/Pods/AgoraVideo_Special_iOS/AgoraReplayKitExtension.xcframework/ios-arm64_x86_64-simulator/AgoraReplayKitExtension.framework/Headers\"",
+					"\"${SRCROOT}/Pods/AgoraRtcEngine_iOS/AgoraReplayKitExtension.xcframework/ios-arm64/AgoraReplayKitExtension.framework/Headers\"",
+					"\"${SRCROOT}/Pods/AgoraRtcEngine_iOS/AgoraReplayKitExtension.xcframework/ios-arm64_x86_64-simulator/AgoraReplayKitExtension.framework/Headers\"",
 				);
 				INFOPLIST_FILE = ScreenSharing/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ScreenSharing;
@@ -1005,7 +1027,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.0.7;
+				MARKETING_VERSION = 1.0.9;
 				MTL_FAST_MATH = YES;
 				OTHER_LDFLAGS = (
 					"$(inherited)",

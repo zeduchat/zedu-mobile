@@ -2,7 +2,7 @@
 
 export const fonts = {
   bold: 'Lato-Bold',
-  semiBold: 'Lato-SemiBold',
-  medium: 'Lato-Medium',
+  semiBold: 'Lato-Bold',
+  medium: 'Lato-Regular',
   regular: 'Lato-Regular',
 };

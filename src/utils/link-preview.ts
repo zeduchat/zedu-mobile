@@ -1,4 +1,4 @@
-import { CLIENT_URL } from '@env';
+import { CLIENT_BASE_URL } from '@/utils/client-url';
 import { ensureHttpsUrl } from '@/utils/link-url';
 import { getPlainMessageText } from '@/utils/message-text';
 import { isDocumentUrl } from '@/utils/document-preview';
@@ -12,7 +12,23 @@ export type LinkPreviewData = {
 };
 
 const URL_IN_TEXT_REGEX =
-  /((?:https?:\/\/|www\.)[^\s<"']+|\b[\w-]+\.(?:com|co|ng|net|org|io|dev|ai|app|cc)(?:\/[^\s<"']*)?)/gi;
+  /((?:https?:\/\/|www\.)[^\s<"']+|\b(?:[\w-]+\.)+(?:com|co|ng|net|org|io|dev|ai|app|cc)\b(?!\.\w)(?:\/[^\s<"']*)?)/gi;
+
+/**
+ * A bare domain (no http:// or www.) that touches an "@" is part of an email
+ * address, not a link of its own: the "zedu.com" in "ada@zedu.com", or the
+ * "john.co" in "john.co@zedu.com". Domains after a space, a dot or a dash are
+ * still links.
+ */
+const isEmbeddedBareDomain = (
+  text: string,
+  match: RegExpExecArray,
+): boolean => {
+  if (/^(?:https?:\/\/|www\.)/i.test(match[1])) return false;
+  return (
+    text[match.index - 1] === '@' || text[match.index + match[0].length] === '@'
+  );
+};
 
 const previewCache = new Map<string, LinkPreviewData | null>();
 
@@ -46,6 +62,7 @@ export function extractMessageUrls(
   URL_IN_TEXT_REGEX.lastIndex = 0;
   let match: RegExpExecArray | null;
   while ((match = URL_IN_TEXT_REGEX.exec(plain)) !== null) {
+    if (isEmbeddedBareDomain(plain, match)) continue;
     const url = normalizeExtractedUrl(match[1]);
     const key = url.replace(/\/$/, '').toLowerCase();
     if (seen.has(key) || exclude.has(key) || isDocumentUrl(url)) {
@@ -73,7 +90,7 @@ export async function fetchLinkPreview(
     return previewCache.get(href) ?? null;
   }
 
-  const base = (CLIENT_URL || 'https://zedu.chat').replace(/\/$/, '');
+  const base = CLIENT_BASE_URL;
 
   try {
     const response = await fetch(
@@ -85,12 +102,28 @@ export async function fetchLinkPreview(
     }
 
     const data = (await response.json()) as LinkPreviewData;
+    const title = (data?.title || '').trim();
+    let hostname = '';
+    try {
+      hostname = new URL(href).hostname;
+    } catch {
+      hostname = href;
+    }
+
     const preview =
-      data?.title && data.title !== 'No Title'
+      title && title !== 'No Title'
         ? {
-            title: data.title,
+            title,
             description: data.description || '',
             image: data.image || '',
+            url: data.url || href,
+            siteName: data.siteName || '',
+          }
+        : data?.image
+        ? {
+            title: data.siteName || hostname,
+            description: data.description || '',
+            image: data.image,
             url: data.url || href,
             siteName: data.siteName || '',
           }

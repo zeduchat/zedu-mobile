@@ -25,6 +25,9 @@ export type VoiceNoteTrack = {
   item?: any;
 };
 
+export const PLAYBACK_SPEEDS = [1, 1.5, 2] as const;
+export type PlaybackSpeed = (typeof PLAYBACK_SPEEDS)[number];
+
 export type VoiceNotePlaybackState = {
   activeTrack: VoiceNoteTrack | null;
   source: VoiceNoteSource | null;
@@ -33,6 +36,8 @@ export type VoiceNotePlaybackState = {
   isPaused: boolean;
   currentMs: number;
   durationMs: number;
+  /** Speed for every voice message; kept while the app is open. */
+  playbackSpeed: PlaybackSpeed;
   engine: VoicePlaybackEngine | null;
   cachedUri: string | null;
   webShouldResume: boolean;
@@ -59,6 +64,7 @@ let state: VoiceNotePlaybackState = {
   isPaused: false,
   currentMs: 0,
   durationMs: 0,
+  playbackSpeed: 1,
   engine: null,
   cachedUri: null,
   webShouldResume: false,
@@ -192,11 +198,14 @@ async function startNativePlayback(track: VoiceNoteTrack) {
     } else {
       await sharedPlayer.startPlayer(playbackUri);
     }
+    await sharedPlayer.setPlaybackSpeed(state.playbackSpeed).catch(() => {});
 
     let firstCallback = true;
     sharedPlayer.addPlayBackListener(event => {
       if (firstCallback) {
         firstCallback = false;
+        // Apply the latest speed: it may have been changed while loading.
+        sharedPlayer.setPlaybackSpeed(state.playbackSpeed).catch(() => {});
         setState({ isLoading: false, isPlaying: true, isPaused: false });
         syncWidgetVisibility();
       }
@@ -254,6 +263,7 @@ function resetPlayback() {
     isPaused: false,
     currentMs: 0,
     durationMs: 0,
+    playbackSpeed: state.playbackSpeed,
     engine: null,
     cachedUri: null,
     webShouldResume: false,
@@ -346,6 +356,16 @@ export const voiceNotePlaybackService = {
 
   async stop() {
     resetPlayback();
+  },
+
+  /** 1x -> 1.5x -> 2x -> 1x. Changes the speed straight away if playing. */
+  async cyclePlaybackSpeed() {
+    const index = PLAYBACK_SPEEDS.indexOf(state.playbackSpeed);
+    const next = PLAYBACK_SPEEDS[(index + 1) % PLAYBACK_SPEEDS.length];
+    setState({ playbackSpeed: next });
+    if (state.engine === 'native' && state.isPlaying) {
+      await sharedPlayer.setPlaybackSpeed(next).catch(() => {});
+    }
   },
 
   handleWebViewReady(durationMs: number) {

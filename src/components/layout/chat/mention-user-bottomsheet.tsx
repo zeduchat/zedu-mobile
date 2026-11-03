@@ -1,5 +1,6 @@
 import React, {
   forwardRef,
+  useEffect,
   useImperativeHandle,
   useMemo,
   useState,
@@ -27,174 +28,203 @@ export interface MentionUserBottomSheetRef {
   close: () => void;
 }
 
-const MentionUserBottomSheet = forwardRef<MentionUserBottomSheetRef, {}>(
-  (props, ref) => {
-    const { colors } = useTheme();
-    const styles = useMemo(
-      () => ({
-        ...createMentionSheetStyles(colors),
-        container: { flex: 1 },
-        avatar: {
-          width: 90,
-          height: 90,
-          borderRadius: 45,
-          borderWidth: 1,
-          borderColor: colors.border,
-        },
-        statusText: {
-          fontSize: 14,
-          color: colors.messageMeta,
-        },
-      }),
-      [colors],
-    );
-    const [user, setUser] = useState<Participant | null>(null);
-    const [loading, setLoading] = useState(false);
-    const bottomSheetRef = useRef<AppBottomSheetRef>(null);
-    const { state, dispatch } = useDataContext();
-    const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
+type MentionUserBottomSheetProps = {
+  /** When parent mounts conditionally, pass the user to show. */
+  user?: Participant | null;
+  onClose?: () => void;
+};
 
-    useImperativeHandle(ref, () => ({
-      open: (user: Participant) => {
-        setUser(user);
-        bottomSheetRef.current?.expand();
+const MentionUserBottomSheet = forwardRef<
+  MentionUserBottomSheetRef,
+  MentionUserBottomSheetProps
+>((props, ref) => {
+  const { onClose, user: userProp } = props;
+  const { colors } = useTheme();
+  const styles = useMemo(
+    () => ({
+      ...createMentionSheetStyles(colors),
+      container: { flex: 1 },
+      avatar: {
+        width: 90,
+        height: 90,
+        borderRadius: 45,
+        borderWidth: 1,
+        borderColor: colors.border,
       },
-      close: () => {
-        bottomSheetRef.current?.close();
+      statusText: {
+        fontSize: 14,
+        color: colors.messageMeta,
       },
-    }));
+    }),
+    [colors],
+  );
+  const [user, setUser] = useState<Participant | null>(userProp ?? null);
+  const [loading, setLoading] = useState(false);
+  const bottomSheetRef = useRef<AppBottomSheetRef>(null);
+  const hasOpenedRef = useRef(false);
+  const { state, dispatch } = useDataContext();
+  const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
-    const handleNavigate = async () => {
-      setLoading(true);
+  useEffect(() => {
+    if (userProp) {
+      setUser(userProp);
+    }
+  }, [userProp]);
 
-      dispatch({
-        type: ACTIONS.SINGLE_PARTICIPANT,
-        payload: state?.participant,
-      });
-      dispatch({
-        type: ACTIONS.SINGLE_DMS_CHAT,
-        payload: { data: state?.dmsChat, page: 1 },
-      });
-      dispatch({ type: ACTIONS.MENTION_USER, payload: true });
+  useImperativeHandle(ref, () => ({
+    open: (nextUser: Participant) => {
+      setUser(nextUser);
+      bottomSheetRef.current?.expand();
+    },
+    close: () => {
+      bottomSheetRef.current?.close();
+    },
+  }));
 
-      const payload = {
-        chat_type: 'user',
-        participant_id: user?.user_id,
-      };
+  // When parent mounts this sheet with a user, open immediately via startOpen.
+  // Imperative open() still works for always-mounted parents.
+  useEffect(() => {
+    if (!userProp) return;
+    hasOpenedRef.current = true;
+  }, [userProp]);
 
-      const { data, error } = await PostRequest(
-        `/organisations/${state?.orgId}/dms`,
-        payload,
-      );
+  const handleNavigate = async () => {
+    setLoading(true);
 
-      if (!error) {
-        dispatch({
-          type: ACTIONS.PARTICIPANT,
-          payload: data.data.participants,
-        });
-        dispatch({
-          type: ACTIONS.DMS_CHAT,
-          payload: { data: data.data.preview_thread, page: 1 },
-        });
+    dispatch({
+      type: ACTIONS.SINGLE_PARTICIPANT,
+      payload: state?.participant,
+    });
+    dispatch({
+      type: ACTIONS.SINGLE_DMS_CHAT,
+      payload: { data: state?.dmsChat, page: 1 },
+    });
+    dispatch({ type: ACTIONS.MENTION_USER, payload: true });
 
-        navigation.navigate('ChatStack', {
-          screen: 'ChatDetails',
-          params: {
-            participant_id: data.data.participant_id,
-            channel_id: data.data.channel_id,
-          },
-        });
-      }
-      // bottomSheetRef.current?.close();
-      setLoading(false);
+    const payload = {
+      chat_type: 'user',
+      participant_id: user?.user_id,
     };
 
-    return (
-      <AppBottomSheet
-        ref={bottomSheetRef}
-        snapPoints={['55%']}
-        showBackdrop={true}
-        enablePanDown={true}
-        backgroundStyle={styles.sheetBackground}
-        handleIndicatorStyle={styles.indicator}
-        paddingBottom={100}
-      >
-        {user && (
-          <View style={styles.container}>
-            <View style={styles.headerSection}>
-              <View style={styles.avatarWrapper}>
-                <FastImage
-                  source={{
-                    uri: user.avatar_url
-                      ? user.avatar_url
-                      : user.default_avatar_url,
-                  }}
-                  style={styles.avatar}
-                />
-                <View
-                  style={[
-                    styles.onlineStatus,
-                    { backgroundColor: user?.online ? '#22C55E' : '#9CA3AF' },
-                  ]}
-                />
-              </View>
+    const { data, error } = await PostRequest(
+      `/organisations/${state?.orgId}/dms`,
+      payload,
+    );
 
-              <AppText variant="bold" style={styles.userName}>
-                {user?.full_name || user?.username}
+    if (!error) {
+      dispatch({
+        type: ACTIONS.PARTICIPANT,
+        payload: data.data.participants,
+      });
+      dispatch({
+        type: ACTIONS.DMS_CHAT,
+        payload: { data: data.data.preview_thread, page: 1 },
+      });
+
+      navigation.navigate('ChatStack', {
+        screen: 'ChatDetails',
+        params: {
+          participant_id: data.data.participant_id,
+          channel_id: data.data.channel_id,
+        },
+      });
+    }
+    // bottomSheetRef.current?.close();
+    setLoading(false);
+  };
+
+  return (
+    <AppBottomSheet
+      ref={bottomSheetRef}
+      snapPoints={['55%']}
+      showBackdrop={true}
+      enablePanDown={true}
+      backgroundStyle={styles.sheetBackground}
+      handleIndicatorStyle={styles.indicator}
+      paddingBottom={100}
+      startOpen={Boolean(userProp)}
+      onChange={index => {
+        if (index >= 0) {
+          hasOpenedRef.current = true;
+        } else if (hasOpenedRef.current) {
+          hasOpenedRef.current = false;
+          onClose?.();
+        }
+      }}
+    >
+      {user && (
+        <View style={styles.container}>
+          <View style={styles.headerSection}>
+            <View style={styles.avatarWrapper}>
+              <FastImage
+                source={{
+                  uri: user.avatar_url
+                    ? user.avatar_url
+                    : user.default_avatar_url,
+                }}
+                style={styles.avatar}
+              />
+              <View
+                style={[
+                  styles.onlineStatus,
+                  { backgroundColor: user?.online ? '#22C55E' : '#9CA3AF' },
+                ]}
+              />
+            </View>
+
+            <AppText variant="bold" style={styles.userName}>
+              {user?.full_name || user?.username}
+            </AppText>
+            <AppText style={styles.userTitle}>
+              {user?.title || 'Member'}
+            </AppText>
+
+            <View style={styles.statusBubble}>
+              <AppText style={styles.statusEmoji}>{user?.icon || '💬'}</AppText>
+              <AppText style={styles.statusText} numberOfLines={1}>
+                {user?.text || 'Available'}
               </AppText>
-              <AppText style={styles.userTitle}>
-                {user?.title || 'Member'}
-              </AppText>
+            </View>
 
-              <View style={styles.statusBubble}>
-                <AppText style={styles.statusEmoji}>
-                  {user?.icon || '💬'}
+            <View style={styles.actionGrid}>
+              <TouchableOpacity style={styles.circleAction}>
+                <View style={styles.actionIconCircle}>
+                  <Ionicons
+                    name="call-outline"
+                    size={28}
+                    color={colors.primary}
+                  />
+                </View>
+                <AppText size={12} style={styles.circleActionText}>
+                  Buzz
                 </AppText>
-                <AppText style={styles.statusText} numberOfLines={1}>
-                  {user?.text || 'Available'}
-                </AppText>
-              </View>
+              </TouchableOpacity>
 
-              <View style={styles.actionGrid}>
-                <TouchableOpacity style={styles.circleAction}>
-                  <View style={styles.actionIconCircle}>
+              <TouchableOpacity
+                style={styles.circleAction}
+                onPress={handleNavigate}
+              >
+                <View style={styles.actionIconCircle}>
+                  {loading ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
                     <Ionicons
-                      name="call-outline"
+                      name="chatbubble-ellipses-outline"
                       size={28}
                       color={colors.primary}
                     />
-                  </View>
-                  <AppText size={12} style={styles.circleActionText}>
-                    Buzz
-                  </AppText>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.circleAction}
-                  onPress={handleNavigate}
-                >
-                  <View style={styles.actionIconCircle}>
-                    {loading ? (
-                      <ActivityIndicator size="small" color={colors.primary} />
-                    ) : (
-                      <Ionicons
-                        name="chatbubble-ellipses-outline"
-                        size={28}
-                        color={colors.primary}
-                      />
-                    )}
-                  </View>
-                  <AppText size={12} style={styles.circleActionText}>
-                    Message
-                  </AppText>
-                </TouchableOpacity>
-              </View>
+                  )}
+                </View>
+                <AppText size={12} style={styles.circleActionText}>
+                  Message
+                </AppText>
+              </TouchableOpacity>
             </View>
           </View>
-        )}
-      </AppBottomSheet>
-    );
-  },
-);
+        </View>
+      )}
+    </AppBottomSheet>
+  );
+});
 
 export default MentionUserBottomSheet;

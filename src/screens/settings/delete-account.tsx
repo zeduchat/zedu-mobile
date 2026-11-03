@@ -17,6 +17,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useDataContext } from '@/store/useDataContext';
 import { ACTIONS } from '@/store/types';
 import { clearAllData } from '@/utils/helper';
+import { unregisterAndroidPushToken } from '@/services/android-fcm.service';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/theme/ThemeProvider';
 
@@ -171,6 +172,7 @@ const DeleteAccountScreen: React.FC = ({ navigation }: any) => {
   const logout = async () => {
     try {
       setLoading(true);
+      await unregisterAndroidPushToken();
       await clearAllData();
 
       // Dispatch everything at once to prevent partial state UI renders

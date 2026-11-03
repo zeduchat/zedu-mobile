@@ -17,7 +17,11 @@ export const useTyping = (subscription: any) => {
     const user = userRef.current;
     if (!sub || !user) return;
 
-    try {
+    if (sub.state && sub.state !== 'subscribed') return;
+
+    // publish() rejects after the socket closes. That rejection is
+    // asynchronous, so try/catch does not handle it.
+    void Promise.resolve(
       sub.publish({
         user: {
           id: user.user_id || user.id,
@@ -25,10 +29,8 @@ export const useTyping = (subscription: any) => {
         },
         typing: isTyping,
         type: 'typing',
-      });
-    } catch {
-      // Ignore publish errors so typing never blocks the editor.
-    }
+      }),
+    ).catch(() => {});
   };
 
   const handleTyping = useCallback((isTyping: boolean) => {

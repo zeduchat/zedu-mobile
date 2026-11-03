@@ -4,6 +4,13 @@ import {
   FileMode,
 } from '@/utils/file-helpers';
 
+export type FileInfo = {
+  owner: string;
+  date_uploaded: string;
+  last_updated: string;
+  shared_in: string[];
+};
+
 /** Query `mode` values expected by GET /files and GET /files/folders */
 export type FilesApiMode = 'all' | 'mine' | 'shared' | 'trash';
 

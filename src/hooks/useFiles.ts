@@ -3,6 +3,7 @@ import { Media } from '@/types/thread';
 import { FileMode } from '@/utils/file-helpers';
 import { GetRequest } from '@/utils/requests';
 import {
+  FileInfo,
   FilesListQueryFilters,
   buildFilesListQuery,
   mapFilesFiltersToRequest,
@@ -128,6 +129,29 @@ export const fetchFileById = async (fileId: string) => {
     return { file: null, error };
   }
   return { file: data?.data || null, error: null };
+};
+
+export const fetchFileInfoById = async (fileId: string) => {
+  const { data, error } = await GetRequest<{ data: FileInfo }>(
+    `/files/file/${fileId}/info`,
+  );
+  if (error) {
+    return { info: null, error };
+  }
+  return { info: data?.data || null, error: null };
+};
+
+export const fetchFileDetails = async (fileId: string) => {
+  const [fileResult, infoResult] = await Promise.all([
+    fetchFileById(fileId),
+    fetchFileInfoById(fileId),
+  ]);
+
+  return {
+    file: fileResult.file,
+    info: infoResult.error ? null : infoResult.info,
+    error: fileResult.error,
+  };
 };
 
 export default useFiles;

@@ -16,6 +16,10 @@ export const useChannels = (
   const { state, dispatch } = useDataContext();
   const { userChannels: channels, channelCallback } = state;
 
+  // Bumped whenever the search changes so a slower, older response (for
+  // example a filtered one) cannot overwrite the list for the current search.
+  const requestGeneration = useRef(0);
+
   const channelsRef = useRef(channels);
   useEffect(() => {
     channelsRef.current = channels;
@@ -33,10 +37,15 @@ export const useChannels = (
       //     setLoadingMore(true);
       // }
 
+      const generation = requestGeneration.current;
       const currentPage = isInitial ? 1 : page;
       const url = `/organisations/${orgId}/user-channels?page=${currentPage}&limit=${limit}&search=${searchQuery}`;
 
       const { data: response, error } = await GetRequest(url);
+
+      if (generation !== requestGeneration.current) {
+        return;
+      }
 
       if (!error && response) {
         const newList = response.data || [];
@@ -77,6 +86,7 @@ export const useChannels = (
   );
 
   useEffect(() => {
+    requestGeneration.current += 1;
     if (search) {
       setLoading(true);
       // dispatch({ type: ACTIONS.USER_CHANNELS, payload: [] });
