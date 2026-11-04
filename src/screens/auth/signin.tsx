@@ -7,9 +7,12 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { AppText } from '@/components/ui/text';
 import { AppInput } from '@/components/ui/input';
 import { AppButton } from '@/components/ui/button';
+import { ShowNotify } from '@/components/ui/toast';
+import { BiometricAuthDialog } from '@/components/ui/biometric-auth-dialog';
 import { useNavigation } from '@react-navigation/native';
 import { configureGoogleSignIn, signInWithGoogle } from '@/lib/google-auth';
 import { signInWithApple } from '@/lib/apple-auth';
@@ -26,12 +29,13 @@ const SigninScreen: React.FC = () => {
   const { colors } = useTheme();
   const styles = useMemo(() => createAuthStyles(colors), [colors]);
   const { dispatch } = useDataContext();
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
   const [buttonLoading, setButtonLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
+  const [showBiometricDialog, setShowBiometricDialog] = useState(false);
 
   const handleAppleLogin = async () => {
     setAppleLoading(true);
@@ -139,6 +143,13 @@ const SigninScreen: React.FC = () => {
     setButtonLoading(false);
   };
 
+  const handleBiometricSuccess = () => {
+    ShowNotify(
+      'Biometrics Verified',
+      'Biometric authentication completed successfully.',
+    );
+  };
+
   return (
     <Container>
       <KeyboardAwareScrollView
@@ -194,6 +205,23 @@ const SigninScreen: React.FC = () => {
           </TouchableOpacity>
         )}
 
+        <TouchableOpacity
+          style={styles.socialBtn}
+          activeOpacity={0.8}
+          onPress={() => setShowBiometricDialog(true)}
+          testID="signin-biometric-button"
+        >
+          <MaterialCommunityIcons
+            name="fingerprint"
+            size={24}
+            color={colors.primary}
+            style={styles.socialIcon}
+          />
+          <AppText variant="medium" size={16}>
+            Sign in with Biometrics
+          </AppText>
+        </TouchableOpacity>
+
         <View style={styles.dividerContainer}>
           <View style={styles.line} />
           <AppText size={14} style={styles.orText}>
@@ -245,6 +273,12 @@ const SigninScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </KeyboardAwareScrollView>
+
+      <BiometricAuthDialog
+        visible={showBiometricDialog}
+        onClose={() => setShowBiometricDialog(false)}
+        onSuccess={handleBiometricSuccess}
+      />
     </Container>
   );
 };

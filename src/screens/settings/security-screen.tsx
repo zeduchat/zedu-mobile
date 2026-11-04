@@ -4,9 +4,13 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemedRefreshControl } from '@/components/ui/themed-refresh-control';
 import { AppText } from '@/components/ui/text';
+import { ShowNotify } from '@/components/ui/toast';
+import { BiometricAuthDialog } from '@/components/ui/biometric-auth-dialog';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Container from '@/components/layout/container';
@@ -90,9 +94,37 @@ const SecurityScreen = ({ navigation }: any) => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [showBiometricDialog, setShowBiometricDialog] = useState(false);
 
   const { state } = useDataContext();
   const { user } = state;
+
+  useEffect(() => {
+    AsyncStorage.getItem('biometric_auth_enabled').then(value => {
+      if (value === 'true') {
+        setBiometricEnabled(true);
+      }
+    });
+  }, []);
+
+  const handleToggleBiometric = async (value: boolean) => {
+    setBiometricEnabled(value);
+    await AsyncStorage.setItem(
+      'biometric_auth_enabled',
+      value ? 'true' : 'false',
+    );
+    if (value) {
+      setShowBiometricDialog(true);
+    }
+  };
+
+  const handleBiometricSuccess = () => {
+    ShowNotify(
+      'Biometrics Verified',
+      'Biometric authentication dialog completed successfully.',
+    );
+  };
 
   const fetchSessions = async (pageNum: number, isRefresh: boolean = false) => {
     if (pageNum > 1) setLoadingMore(true);
@@ -109,7 +141,6 @@ const SecurityScreen = ({ navigation }: any) => {
         setSessions(prev => [...prev, ...data.data]);
       }
 
-      // Check if there are more pages
       const pagination = data.pagination;
       setHasMore(pagination.current_page < pagination.total_pages_count);
     }
@@ -189,6 +220,67 @@ const SecurityScreen = ({ navigation }: any) => {
             />
           }
         >
+          <AppText variant="bold" style={styles.sectionTitle}>
+            Biometric Security
+          </AppText>
+
+          <View style={styles.sessionCard}>
+            <View style={styles.sessionHeader}>
+              <View style={styles.iconContainer}>
+                <MaterialCommunityIcons
+                  name="fingerprint"
+                  size={22}
+                  color={colors.primary}
+                />
+              </View>
+              <View style={styles.sessionMeta}>
+                <AppText variant="bold" style={styles.deviceName}>
+                  Biometric Authentication
+                </AppText>
+                <AppText style={styles.locationText}>
+                  Use Face ID or Touch ID to protect your account
+                </AppText>
+              </View>
+              <Switch
+                value={biometricEnabled}
+                onValueChange={handleToggleBiometric}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor={colors.white}
+                testID="biometric-auth-switch"
+              />
+            </View>
+
+            <View style={styles.dividerInset} />
+
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingVertical: 12,
+                backgroundColor: colors.surfaceElevated,
+                borderRadius: 10,
+                marginTop: 4,
+              }}
+              onPress={() => setShowBiometricDialog(true)}
+              activeOpacity={0.7}
+              testID="test-biometric-dialog-button"
+            >
+              <MaterialCommunityIcons
+                name="shield-key-outline"
+                size={18}
+                color={colors.primary}
+                style={{ marginRight: 6 }}
+              />
+              <AppText
+                variant="semiBold"
+                style={{ color: colors.primary, fontSize: 14 }}
+              >
+                Open Biometric Dialog
+              </AppText>
+            </TouchableOpacity>
+          </View>
+
           <AppText variant="bold" style={styles.sectionTitle}>
             Active Sessions
           </AppText>
@@ -275,15 +367,14 @@ const SecurityScreen = ({ navigation }: any) => {
               )}
             </>
           )}
-
-          {/* <AppButton
-                        title="Sign Out of All Devices"
-                        variant="secondary"
-                        onPress={() => { }}
-                        style={styles.signOutAll}
-                    /> */}
         </ScrollView>
       )}
+
+      <BiometricAuthDialog
+        visible={showBiometricDialog}
+        onClose={() => setShowBiometricDialog(false)}
+        onSuccess={handleBiometricSuccess}
+      />
     </Container>
   );
 };
