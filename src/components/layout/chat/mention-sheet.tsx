@@ -63,7 +63,9 @@ export const MentionSheet = ({
 
   const filteredParticipants = useMemo(
     () =>
-      mode === 'channel' ? [] : searchMentionParticipants(safeParticipants, query),
+      mode === 'channel'
+        ? []
+        : searchMentionParticipants(safeParticipants, query),
     [mode, query, safeParticipants],
   );
 

@@ -405,8 +405,7 @@ export const parseTiptapHtmlToRichSegments = (
             stripHtmlTags(source.slice(start, start + closeIdx)),
           );
           const label =
-            getAttr(attrs, 'data-label') ||
-            rawText.replace(/^[@#]/, '');
+            getAttr(attrs, 'data-label') || rawText.replace(/^[@#]/, '');
           const id = getAttr(attrs, 'data-id');
           const mentionKind = resolveMentionKind({
             mentionType: getAttr(attrs, 'data-mention-type'),
@@ -1126,7 +1125,11 @@ export const tiptapHtmlToMarkdown = (html: string): string => {
     });
 
     const prefix = mentionKind === 'channel-ref' ? '#' : '@';
-    return `[${prefix}${label}](${buildMentionHref({ mentionKind, id, label })})`;
+    return `[${prefix}${label}](${buildMentionHref({
+      mentionKind,
+      id,
+      label,
+    })})`;
   });
 
   // Fenced code blocks before inline <code>
