@@ -16,7 +16,26 @@ export function createSettingsStyles(colors: ThemeColors) {
     header: {
       backgroundColor: colors.secondary,
       paddingHorizontal: 10,
-      paddingVertical: Platform.OS === 'ios' ? 30 : 20,
+      paddingTop: Platform.OS === 'ios' ? 12 : 8,
+      paddingBottom: Platform.OS === 'ios' ? 20 : 16,
+    },
+    headerNav: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      minHeight: 44,
+      marginBottom: 12,
+      paddingHorizontal: 2,
+    },
+    backBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingVertical: 6,
+      paddingRight: 12,
+    },
+    headerTitle: {
+      color: colors.white,
+      fontSize: 18,
     },
     profileCard: {
       flexDirection: 'row',

@@ -38,6 +38,8 @@ const MessageItem = ({
   onMentionUser,
   editMsgId,
   onEdit,
+  avatarSlot,
+  showNewMarker = false,
 }: any) => {
   const { colors } = useTheme();
   const styles = useMemo(
@@ -283,6 +285,19 @@ const MessageItem = ({
         </View>
       )}
 
+      {showNewMarker && (
+        <View
+          style={styles.newMarker}
+          accessible
+          accessibilityLabel="New messages"
+        >
+          <View style={styles.newMarkerLine} />
+          <AppText variant="bold" size={10.5} style={styles.newMarkerText}>
+            NEW
+          </AppText>
+        </View>
+      )}
+
       <PinnedMessageBanner item={item} />
 
       <View
@@ -291,21 +306,26 @@ const MessageItem = ({
           isReceived ? styles.receivedRow : styles.sentRow,
         ]}
       >
-        {isReceived && (
-          <TouchableOpacity
-            style={styles.groupAvatarContainer}
-            onPress={() => onMentionUser(item.user_id)}
-          >
-            <FastImage
-              source={{
-                uri: item.avatar_url
-                  ? item.avatar_url
-                  : item.default_avatar_url,
-              }}
-              style={styles.groupSenderAvatar}
+        {isReceived &&
+          (avatarSlot === 'spacer' ? (
+            <View
+              style={[styles.groupAvatarContainer, styles.groupSenderAvatar]}
             />
-          </TouchableOpacity>
-        )}
+          ) : (
+            <TouchableOpacity
+              style={styles.groupAvatarContainer}
+              onPress={() => onMentionUser(item.user_id)}
+            >
+              <FastImage
+                source={{
+                  uri: item.avatar_url
+                    ? item.avatar_url
+                    : item.default_avatar_url,
+                }}
+                style={styles.groupSenderAvatar}
+              />
+            </TouchableOpacity>
+          ))}
 
         <TouchableOpacity
           activeOpacity={0.8}

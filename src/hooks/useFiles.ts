@@ -131,10 +131,22 @@ export const fetchFileById = async (fileId: string) => {
   return { file: data?.data || null, error: null };
 };
 
-export const fetchFileInfoById = async (fileId: string) => {
+export const fetchFileInfoById = async (
+  fileId: string,
+  options?: { signal?: AbortSignal },
+) => {
+  if (options?.signal?.aborted) {
+    return { info: null, error: new Error('aborted') };
+  }
+
   const { data, error } = await GetRequest<{ data: FileInfo }>(
     `/files/file/${fileId}/info`,
   );
+
+  if (options?.signal?.aborted) {
+    return { info: null, error: new Error('aborted') };
+  }
+
   if (error) {
     return { info: null, error };
   }

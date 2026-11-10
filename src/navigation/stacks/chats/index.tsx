@@ -32,6 +32,7 @@ export type ChatStackParamList = {
     participant_id?: string;
     channel_id: string;
     fromNotification?: boolean;
+    unread_count?: number;
   };
   GroupCallScreen: undefined;
   GroupAddMembersScreen: undefined;

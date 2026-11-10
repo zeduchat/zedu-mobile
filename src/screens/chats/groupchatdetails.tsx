@@ -75,6 +75,10 @@ import {
 } from '@/components/layout/chat/chat-header-menu';
 import { ChatSearchResults } from '@/components/layout/chat/chat-search-results';
 import type { ChannelSearchHit } from '@/services/chat/channel-search';
+import {
+  getFirstUnreadMessageId,
+  getSenderAvatarSlot,
+} from '@/utils/chat-message-layout';
 
 const GroupChatDetailScreen = ({ navigation, route }: any) => {
   const { colors } = useTheme();
@@ -133,11 +137,59 @@ const GroupChatDetailScreen = ({ navigation, route }: any) => {
     clearUploads,
     isUploading: _isUploading,
   } = useFileUpload();
-  const { channel_id, fromNotification } = route.params ?? {};
+  const { channel_id, fromNotification, unread_count } = route.params ?? {};
   const participants = Array.isArray(participant) ? participant : [];
-  const { loadMore, isFetchingMore } = UseGroupChatDetails({
+  const { loadMore, isFetchingMore, isInitialLoading } = UseGroupChatDetails({
     channel_id: channel_id || '',
   });
+  // Unread count is captured by the Chats list before the chat is marked as
+  // read; the marker is resolved once per visit so it stays put.
+  const unreadSnapshot = useRef({ count: 0, resolved: false });
+  const scrolledToMarker = useRef<string | null>(null);
+  const [newMarkerId, setNewMarkerId] = useState<string | null>(null);
+
+  useEffect(() => {
+    unreadSnapshot.current = { count: unread_count ?? 0, resolved: false };
+    scrolledToMarker.current = null;
+    setNewMarkerId(null);
+    // Only reset when the conversation changes, not when params are re-read.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channel_id]);
+
+  useEffect(() => {
+    const snapshot = unreadSnapshot.current;
+    if (snapshot.resolved || isInitialLoading) return;
+    snapshot.resolved = true;
+    setNewMarkerId(
+      getFirstUnreadMessageId(dmsChat, snapshot.count, user?.user_id),
+    );
+  }, [isInitialLoading, dmsChat, user?.user_id]);
+
+  useEffect(() => {
+    if (!newMarkerId || scrolledToMarker.current === newMarkerId) return;
+    const index = dmsChat.findIndex(
+      (entry: any) => entry.thread_id === newMarkerId,
+    );
+    if (index < 0) return;
+    scrolledToMarker.current = newMarkerId;
+    const timer = setTimeout(() => {
+      flatListRef.current?.scrollToIndex({
+        index,
+        viewPosition: 0.9,
+        animated: false,
+      });
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [newMarkerId, dmsChat]);
+
+  const messageAvatars = useMemo(
+    () =>
+      (dmsChat || []).map((_item: any, index: number) => ({
+        slot: getSenderAvatarSlot(dmsChat, index),
+      })),
+    [dmsChat],
+  );
+
   const suppressLoadMoreUntilRef = useRef(0);
 
   const handleLoadMore = useCallback(() => {
@@ -894,6 +946,8 @@ const GroupChatDetailScreen = ({ navigation, route }: any) => {
                 onMentionUser={handleMentionUser}
                 editMsgId={editMsgId}
                 onEdit={onEdit}
+                avatarSlot={messageAvatars[index]?.slot}
+                showNewMarker={item.thread_id === newMarkerId}
               />
             </View>
           )}

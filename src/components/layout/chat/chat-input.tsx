@@ -95,6 +95,7 @@ const ChatInput = ({
   const messageRef = useRef(message);
   const skipSelectionMentionSync = useRef(false);
   const isFocusedRef = useRef(false);
+  const mentionActiveRef = useRef(false);
 
   useEffect(() => {
     messageRef.current = message;
@@ -202,8 +203,14 @@ const ChatInput = ({
   const updateMentionTrigger = (text: string, cursorPos: number) => {
     const mention = getActiveMention(text, cursorPos);
     if (mention) {
+      mentionActiveRef.current = true;
       onMentionTrigger?.(mention.query, mention.pos, mention.trigger);
-    } else {
+      return;
+    }
+    // Only cancel once when leaving an active mention — avoid parent
+    // re-renders on every plain-text keystroke/delete.
+    if (mentionActiveRef.current) {
+      mentionActiveRef.current = false;
       onMentionCancel?.();
     }
   };
@@ -225,7 +232,8 @@ const ChatInput = ({
 
     nextCursor = Math.max(0, Math.min(text.length, nextCursor));
     selectionRef.current = { start: nextCursor, end: nextCursor };
-    setSelection(selectionRef.current);
+    // Keep selection in a ref only — setSelection here re-renders on every key
+    // and makes deletes feel lagged behind the caret.
     setMessage(text);
     updateMentionTrigger(text, nextCursor);
     skipSelectionMentionSync.current = true;
@@ -262,6 +270,15 @@ const ChatInput = ({
 
     return parseComposerMentionSegments(message, composerMentions);
   }, [composerMentions, highlightMentions, message]);
+
+  // Only hide the real TextInput text when there is something to color.
+  // Plain typing stays on the native input so deletes remain instant.
+  const showMentionOverlay = useMemo(
+    () =>
+      highlightMentions &&
+      composerSegments.some(segment => segment.type !== 'text'),
+    [composerSegments, highlightMentions],
+  );
 
   const resolvedInputHeight = clampComposerHeight(contentHeight);
   const composerScrollEnabled = shouldEnableComposerScroll(contentHeight);
@@ -432,7 +449,7 @@ const ChatInput = ({
             style={[
               styles.textInputWrapper,
               isExpanded
-                ? { minHeight: Math.max(44, resolvedInputHeight + 8) }
+                ? { minHeight: Math.max(52, resolvedInputHeight + 8) }
                 : null,
             ]}
             onLayout={handleTextInputWrapperLayout}
@@ -449,7 +466,7 @@ const ChatInput = ({
             ) : null}
 
             <View style={styles.composerInputBox}>
-              {highlightMentions && composerSegments.length > 0 ? (
+              {showMentionOverlay ? (
                 <Text
                   allowFontScaling={false}
                   pointerEvents="none"
@@ -460,18 +477,10 @@ const ChatInput = ({
                   ]}
                 >
                   {composerSegments.map((segment, index) => {
-                    if (segment.type === 'channelMention') {
-                      return (
-                        <Text
-                          key={`composer-segment-${index}`}
-                          style={styles.composerChannelMentionText}
-                        >
-                          {segment.content}
-                        </Text>
-                      );
-                    }
-
-                    if (segment.type === 'channelRefMention') {
+                    if (
+                      segment.type === 'channelMention' ||
+                      segment.type === 'channelRefMention'
+                    ) {
                       return (
                         <Text
                           key={`composer-segment-${index}`}
@@ -513,8 +522,10 @@ const ChatInput = ({
                 placeholderTextColor={colors.textSecondary}
                 style={[
                   styles.input,
-                  highlightMentions ? { color: 'transparent' } : null,
-                  isExpanded ? { height: resolvedInputHeight } : null,
+                  showMentionOverlay && styles.inputTransparentText,
+                  isExpanded
+                    ? { height: resolvedInputHeight, textAlignVertical: 'top' }
+                    : null,
                 ]}
                 placeholder="Type a message"
                 value={message}
@@ -524,7 +535,9 @@ const ChatInput = ({
                 scrollEnabled={composerScrollEnabled}
                 blurOnSubmit={false}
                 onContentSizeChange={handleContentSizeChange}
-                textAlignVertical="top"
+                // Center keeps the empty placeholder fully visible; top once
+                // the composer grows with typed text.
+                textAlignVertical={message.trim() ? 'top' : 'center'}
                 onPressIn={() => {
                   if (isEmojiOpen) onCloseEmoji();
                 }}

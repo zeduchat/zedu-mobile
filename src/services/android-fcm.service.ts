@@ -98,20 +98,12 @@ export const unregisterAndroidPushToken = async () => {
     return;
   }
 
-  const token = await AsyncStorage.getItem(TOKEN_KEY);
-  if (token) {
-    await request({
-      method: 'DELETE',
-      url: '/fcmtoken',
-      data: { fcm_token: token },
-    });
-  }
-
+  // Logout only clears the local/native token. Do not DELETE /fcmtoken.
   if (nativeModule) {
     try {
       await nativeModule.deleteToken();
     } catch {
-      // The server copy is already removed. A later launch can mint a new token.
+      // A later launch can mint a new token.
     }
   }
 

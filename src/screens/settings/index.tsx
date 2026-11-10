@@ -118,6 +118,21 @@ const SettingsHome = () => {
     <Container color={colors.secondary} dark>
       {/* Consistent Dark Header */}
       <View style={styles.header}>
+        <View style={styles.headerNav}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="chevron-back" size={24} color={colors.white} />
+            <AppText variant="bold" style={styles.headerTitle}>
+              Settings
+            </AppText>
+          </TouchableOpacity>
+        </View>
+
         {/* Profile Section inside Header */}
         <View style={styles.profileCard}>
           <View style={styles.profileInfo}>

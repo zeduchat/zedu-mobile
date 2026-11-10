@@ -45,6 +45,7 @@ const ChannelThreadScreen = ({ navigation, route }: any) => {
   const [mentionState, setMentionState] = useState<{
     query: string;
     pos: number;
+    trigger: '@' | '#';
   } | null>(null);
   const [mentionsMetadata, setMentionsMetadata] = useState<any[]>([]);
   const flatListRef = useRef<FlatList>(null);
@@ -146,16 +147,17 @@ const ChannelThreadScreen = ({ navigation, route }: any) => {
     [channelDetails?.participants, _channel?.participants],
   );
 
+  const userChannelsList = useMemo(
+    () => state.userChannels || [],
+    [state.userChannels],
+  );
+
   const handleMentionTrigger = (
     query: string,
     pos: number,
     trigger: '@' | '#' = '@',
   ) => {
-    // '#' channel linking is only supported in channel-chat.
-    if (trigger === '#') {
-      return;
-    }
-    setMentionState({ query, pos });
+    setMentionState({ query, pos, trigger });
   };
 
   const handleMentionSelect = (selectedUser: any) => {
@@ -189,6 +191,41 @@ const ChannelThreadScreen = ({ navigation, route }: any) => {
     setMentionState(null);
   };
 
+  const handleChannelMentionSelect = (selectedChannel: any) => {
+    if (!mentionState) return;
+
+    const { pos, query } = mentionState;
+    const mentionStart = pos - query.length - 1;
+
+    const textBefore = message.substring(0, mentionStart);
+    const textAfter = message.substring(pos);
+
+    const newMessage = `${textBefore}#${selectedChannel.name} ${textAfter}`;
+    setMessage(newMessage);
+
+    const channelId = String(
+      selectedChannel.channels_id || selectedChannel.channel_id,
+    );
+    const channelLabel = selectedChannel.name;
+
+    setMentionsMetadata(prev => {
+      const alreadyExists = prev.some(
+        m => m.id === channelId && m.type === 'channel-ref',
+      );
+      if (alreadyExists) return prev;
+      return [
+        ...prev,
+        {
+          id: channelId,
+          label: channelLabel,
+          type: 'channel-ref',
+        },
+      ];
+    });
+
+    setMentionState(null);
+  };
+
   const handleSendMessage = async (content: string, medias: any[] = []) => {
     if (!content.trim() && medias.length === 0) return;
 
@@ -197,8 +234,11 @@ const ChannelThreadScreen = ({ navigation, route }: any) => {
     const tempId = uuid.v4() as string;
     let formattedContent = content;
     mentionsMetadata.forEach(m => {
-      const mentionTag = buildMentionHtmlTag(m);
-      formattedContent = formattedContent.replace(`@${m.label}`, mentionTag);
+      const prefix = m.type === 'channel-ref' ? '#' : '@';
+      formattedContent = formattedContent.replace(
+        `${prefix}${m.label}`,
+        buildMentionHtmlTag(m),
+      );
     });
     const finalHtml = `<p>${formattedContent}</p>`;
 
@@ -463,14 +503,22 @@ const ChannelThreadScreen = ({ navigation, route }: any) => {
       )}
 
       <ChatKeyboardAvoidingView>
-        {mentionState && (
-          <MentionSheet
-            query={mentionState.query}
-            showChannelMention
-            participants={mentionParticipants}
-            onSelect={handleMentionSelect}
-          />
-        )}
+        {mentionState &&
+          (mentionState.trigger === '#' ? (
+            <MentionSheet
+              mode="channel"
+              query={mentionState.query}
+              channels={userChannelsList}
+              onSelect={handleChannelMentionSelect}
+            />
+          ) : (
+            <MentionSheet
+              query={mentionState.query}
+              showChannelMention
+              participants={mentionParticipants}
+              onSelect={handleMentionSelect}
+            />
+          ))}
 
         <ChatInput
           message={message}
@@ -491,6 +539,8 @@ const ChannelThreadScreen = ({ navigation, route }: any) => {
           onMentionCancel={() => {
             setMentionState(null);
           }}
+          highlightMentions
+          composerMentions={mentionsMetadata}
         />
 
         {isEmojiOpen && (

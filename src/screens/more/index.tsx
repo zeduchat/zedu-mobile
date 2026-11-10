@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Container from '@/components/layout/container';
 import { AppText } from '@/components/ui/text';
+import { UserAvatarWithStatus } from '@/components/ui/user-avatar-with-status';
 import { useDataContext } from '@/store/useDataContext';
 import { useTheme } from '@/theme/ThemeProvider';
 import { normalize } from '@/utils/normalize';
@@ -12,6 +13,7 @@ const MoreScreen = () => {
   const navigation = useNavigation();
   const { colors } = useTheme();
   const { state } = useDataContext();
+  const { user, orgData } = state;
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const openFiles = () => {
@@ -23,15 +25,24 @@ const MoreScreen = () => {
   };
 
   return (
-    <Container dark>
+    <Container color={colors.secondary} dark>
       <View style={styles.screen}>
         <View style={styles.header}>
-          <AppText variant="bold" style={styles.heading}>
-            More
-          </AppText>
-          <AppText style={styles.organisationName} numberOfLines={1}>
-            {state.orgData?.name || ''}
-          </AppText>
+          <View style={styles.profileTop}>
+            <View style={styles.headerText}>
+              <AppText variant="bold" style={styles.heading}>
+                More
+              </AppText>
+              <AppText style={styles.organisationName} numberOfLines={1}>
+                {orgData?.name || ''}
+              </AppText>
+            </View>
+
+            <UserAvatarWithStatus
+              user={user}
+              badgeRingColor={colors.secondary}
+            />
+          </View>
         </View>
 
         <View style={styles.content}>
@@ -66,18 +77,27 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
     header: {
       backgroundColor: colors.secondary,
       paddingHorizontal: normalize(20),
-      paddingTop: normalize(44),
-      paddingBottom: normalize(34),
+      paddingVertical: normalize(20),
+    },
+    profileTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: normalize(12),
+    },
+    headerText: {
+      flex: 1,
+      minWidth: 0,
     },
     heading: {
       color: colors.white,
-      fontSize: normalize(30),
-      lineHeight: normalize(36),
+      fontSize: normalize(19),
+      lineHeight: normalize(24),
     },
     organisationName: {
       color: colors.secondaryforeground,
-      fontSize: normalize(17),
-      marginTop: normalize(3),
+      fontSize: normalize(14),
+      marginTop: normalize(2),
     },
     content: {
       flex: 1,
@@ -99,8 +119,8 @@ const createStyles = (colors: ReturnType<typeof useTheme>['colors']) =>
     itemTitle: {
       flex: 1,
       color: colors.textPrimary,
-      fontSize: normalize(18),
-      marginLeft: normalize(24),
+      fontSize: 15,
+      marginLeft: normalize(12),
     },
     divider: {
       position: 'absolute',

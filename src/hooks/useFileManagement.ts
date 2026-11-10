@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Share } from 'react-native';
 import {
   pick,
@@ -111,6 +111,8 @@ export const useFileManagement = (navigation: FileManagementNavigation) => {
   const [fileOwnerMap, setFileOwnerMap] = useState<Map<string, string>>(
     new Map(),
   );
+  // Cache API owner payloads by file id so filter/remount churn does not N+1.
+  const fileOwnerInfoCacheRef = useRef<Map<string, string | null>>(new Map());
 
   // Members the "Uploaded By" filter refers to; folders are matched by ID.
   const uploadedByUserIds = useMemo(
@@ -222,25 +224,72 @@ export const useFileManagement = (navigation: FileManagementNavigation) => {
   // view shows the real uploader name instead of "Unknown".
   useEffect(() => {
     const controller = new AbortController();
-    const fetchOwners = async () => {
-      const nextMap = new Map<string, string>();
-      await Promise.all(
-        filteredFiles.map(async file => {
-          const { info } = await fetchFileInfoById(file.id);
-          const apiOwner = info?.owner ?? null;
-          const owner = resolveFileOwnerName({
+
+    // Seed optimistic names from local data so the list does not flash Unknown
+    // while network owner lookups are in flight.
+    setFileOwnerMap(prev => {
+      const next = new Map(prev);
+      let changed = false;
+      filteredFiles.forEach(file => {
+        if (next.has(file.id)) return;
+        const cachedApiOwner = fileOwnerInfoCacheRef.current.has(file.id)
+          ? fileOwnerInfoCacheRef.current.get(file.id)
+          : undefined;
+        next.set(
+          file.id,
+          resolveFileOwnerName({
             fileUserId: file.user_id,
-            apiOwner,
+            apiOwner: cachedApiOwner ?? null,
             orgMembers,
             currentUser: user,
+          }),
+        );
+        changed = true;
+      });
+      return changed ? next : prev;
+    });
+
+    const fetchOwners = async () => {
+      const missingFiles = filteredFiles.filter(
+        file => !fileOwnerInfoCacheRef.current.has(file.id),
+      );
+
+      await Promise.all(
+        missingFiles.map(async file => {
+          if (controller.signal.aborted) return;
+          const { info, error: fetchError } = await fetchFileInfoById(file.id, {
+            signal: controller.signal,
           });
-          nextMap.set(file.id, owner);
+          if (
+            controller.signal.aborted ||
+            (fetchError instanceof Error && fetchError.message === 'aborted')
+          ) {
+            return;
+          }
+          fileOwnerInfoCacheRef.current.set(file.id, info?.owner ?? null);
         }),
       );
-      if (!controller.signal.aborted) {
-        setFileOwnerMap(nextMap);
-      }
+
+      if (controller.signal.aborted) return;
+
+      setFileOwnerMap(prev => {
+        const next = new Map(prev);
+        filteredFiles.forEach(file => {
+          if (!fileOwnerInfoCacheRef.current.has(file.id)) return;
+          next.set(
+            file.id,
+            resolveFileOwnerName({
+              fileUserId: file.user_id,
+              apiOwner: fileOwnerInfoCacheRef.current.get(file.id) ?? null,
+              orgMembers,
+              currentUser: user,
+            }),
+          );
+        });
+        return next;
+      });
     };
+
     fetchOwners();
     return () => controller.abort();
   }, [filteredFiles, orgMembers, user]);

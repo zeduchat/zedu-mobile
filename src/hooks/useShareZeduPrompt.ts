@@ -1,20 +1,20 @@
 import { useCallback } from 'react';
 import { Alert, Share } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { CLIENT_URL } from '@env';
 import { claimSharePrompt } from '@/utils/share-zedu-prompt';
+import { CLIENT_BASE_URL, normalizeClientBaseUrl } from '@/utils/client-url';
 
 const SHARE_COPY =
   'Join me on Zedu—a space for learning communities to connect and collaborate.';
 
 export const buildShareZeduMessage = (clientUrl?: string) => {
-  const publicUrl = (clientUrl || 'https://zedu.chat').replace(/\/$/, '');
+  const publicUrl = normalizeClientBaseUrl(clientUrl ?? CLIENT_BASE_URL);
   return `${SHARE_COPY}\n\n${publicUrl}`;
 };
 
 export const presentShareZeduPrompt = async (
   userId?: string,
-  clientUrl = CLIENT_URL,
+  clientUrl = CLIENT_BASE_URL,
   shouldPresent: () => boolean = () => true,
 ) => {
   if (!userId || !shouldPresent()) return;
@@ -48,7 +48,7 @@ const useShareZeduPrompt = (userId?: string) => {
   useFocusEffect(
     useCallback(() => {
       let isFocused = true;
-      presentShareZeduPrompt(userId, CLIENT_URL, () => isFocused);
+      presentShareZeduPrompt(userId, CLIENT_BASE_URL, () => isFocused);
 
       return () => {
         isFocused = false;

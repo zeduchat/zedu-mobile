@@ -25,6 +25,7 @@ import { useDataContext } from '@/store/useDataContext';
 import UseReplyChat from '@/services/channels/use-reply';
 import { ACTIONS } from '@/store/types';
 import { PostRequest } from '@/utils/requests';
+import { recordSuccessfulMessageResult } from '@/utils/share-zedu-prompt';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import ReplyConnection from '@/centrifugoo/reply-connection';
 import ThreadMessageItem from '@/components/layout/channels/thread-message-item';
@@ -211,13 +212,25 @@ const MentionThreadScreen = ({ navigation, route }: any) => {
       mentions: mentionsMetadata,
     };
 
+    let error: string | null = null;
     if (mention?.channel_type === 'DM') {
-      await PostRequest(`/dms/messages/${channel_id}`, payload);
+      ({ error } = await PostRequest(`/dms/messages/${channel_id}`, payload));
     } else if (mention?.channel_type === 'GroupDm') {
-      await PostRequest(`/group-dms/messages/${channel_id}`, payload);
+      ({ error } = await PostRequest(
+        `/group-dms/messages/${channel_id}`,
+        payload,
+      ));
     } else {
-      await PostRequest(`/channels/${channel_id}/messages`, payload);
+      ({ error } = await PostRequest(
+        `/channels/${channel_id}/messages`,
+        payload,
+      ));
     }
+
+    await recordSuccessfulMessageResult(
+      state.user?.user_id || state.user?.id,
+      error,
+    );
 
     dispatch({
       type: ACTIONS.CHANNEL_CALLBACK,

@@ -5,6 +5,7 @@ import {
   type TextStyle,
 } from 'react-native';
 import { normalize } from '@/utils/normalize';
+import { fonts } from '@/theme/typography';
 import type { ThemeColors } from './types';
 
 export function createMessageItemStyles(colors: ThemeColors, width: number) {
@@ -527,13 +528,16 @@ export function createChatInputStyles(colors: ThemeColors) {
       paddingHorizontal: 12,
       paddingVertical: 4,
       alignItems: 'center',
+      minHeight: 52,
     },
     input: {
       flex: 1,
-      paddingTop: Platform.OS === 'ios' ? 10 : 8,
-      paddingBottom: Platform.OS === 'ios' ? 10 : 8,
+      minHeight: 44,
+      paddingTop: Platform.OS === 'ios' ? 10 : 10,
+      paddingBottom: Platform.OS === 'ios' ? 10 : 10,
       paddingHorizontal: 0,
       fontSize: 16,
+      fontFamily: fonts.regular,
       color: colors.textPrimary,
     },
     composerMeasureText: {
@@ -543,12 +547,14 @@ export function createChatInputStyles(colors: ThemeColors) {
       top: 4,
       fontSize: 16,
       lineHeight: 20,
-      paddingTop: Platform.OS === 'ios' ? 10 : 8,
-      paddingBottom: Platform.OS === 'ios' ? 10 : 8,
+      fontFamily: fonts.regular,
+      paddingTop: Platform.OS === 'ios' ? 10 : 10,
+      paddingBottom: Platform.OS === 'ios' ? 10 : 10,
       color: colors.textPrimary,
     },
     composerInputBox: {
       flex: 1,
+      minHeight: 44,
       position: 'relative',
       justifyContent: 'center',
     },
@@ -566,15 +572,18 @@ export function createChatInputStyles(colors: ThemeColors) {
     composerNormalText: {
       color: colors.textPrimary,
       fontSize: 16,
+      fontFamily: fonts.regular,
     },
     composerMentionText: {
       color: colors.primary,
       fontSize: 16,
+      fontFamily: fonts.regular,
     },
     composerChannelMentionText: {
       color: colors.channelMentionForeground,
       backgroundColor: colors.channelMentionBackground,
       fontSize: 16,
+      fontFamily: fonts.regular,
     },
     emojiBtn: { padding: 4 },
     recordingBar: {
