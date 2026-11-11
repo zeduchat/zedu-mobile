@@ -129,6 +129,40 @@ const ReplyConnection = ({ id }: Props) => {
         }
       }
 
+      // PINNED REPLY
+      if (
+        data?.section === 'reply_message' &&
+        data?.notification_type === 'pinned_message_event'
+      ) {
+        const ids = data?.modification_ids;
+
+        dispatch({
+          type: ACTIONS.UPDATE_REPLY_PIN,
+          payload: {
+            threadId: ids?.message_id,
+            is_pin: true,
+            details: data?.pinned_details,
+          },
+        });
+      }
+
+      // UNPINNED REPLY
+      if (
+        data?.section === 'reply_message' &&
+        data?.notification_type === 'unpinned_message_event'
+      ) {
+        const ids = data?.modification_ids;
+
+        dispatch({
+          type: ACTIONS.UPDATE_REPLY_PIN,
+          payload: {
+            threadId: ids?.message_id,
+            is_pin: false,
+            details: null,
+          },
+        });
+      }
+
       // DELETE CHANNEL MESSAGE
       if (
         data?.section === 'thread_message' &&

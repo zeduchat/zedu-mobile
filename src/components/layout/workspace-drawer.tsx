@@ -7,6 +7,7 @@ import {
   Platform,
   StatusBar,
   Linking,
+  Alert,
 } from 'react-native';
 import { DrawerContentComponentProps } from '@react-navigation/drawer';
 import { AppText } from '@/components/ui/text';
@@ -18,7 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PutRequest } from '@/utils/requests';
 import { ACTIONS } from '@/store/types';
 import { storeMultipleData } from '@/utils/helper';
-import { CLIENT_URL } from '@env';
+import { CLIENT_BASE_URL } from '@/utils/client-url';
 import FastImage from 'react-native-fast-image';
 import { useTheme } from '@/theme/ThemeProvider';
 import { createWorkspaceDrawerStyles } from '@/theme/createScreenStyles';
@@ -173,11 +174,14 @@ const WorkspaceDrawer = (props: DrawerContentComponentProps) => {
           <ActionItem
             label="Help"
             icon="help-circle"
-            onPress={() =>
-              Linking.openURL(
-                `${CLIENT_URL || 'https://zedu.chat'}/contact-sales`,
-              )
-            }
+            onPress={async () => {
+              const url = `${CLIENT_BASE_URL}/resources`;
+              try {
+                await Linking.openURL(url);
+              } catch {
+                Alert.alert('Error', `Couldn't open ${url}`);
+              }
+            }}
           />
         </View>
       </SafeAreaView>

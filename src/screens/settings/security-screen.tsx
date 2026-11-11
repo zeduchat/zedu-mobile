@@ -14,6 +14,7 @@ import { GetRequest } from '@/utils/requests';
 import { useDataContext } from '@/store/useDataContext';
 import { useTheme } from '@/theme/ThemeProvider';
 import { createSecurityScreenStyles } from '@/theme/createScreenStyles';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Session {
   id: string;
@@ -80,6 +81,7 @@ const SecuritySkeleton = ({
 );
 
 const SecurityScreen = ({ navigation }: any) => {
+  const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const styles = useMemo(() => createSecurityScreenStyles(colors), [colors]);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -176,7 +178,10 @@ const SecurityScreen = ({ navigation }: any) => {
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: Math.max(insets.bottom + 20, 40) },
+          ]}
           refreshControl={
             <ThemedRefreshControl
               refreshing={refreshing}

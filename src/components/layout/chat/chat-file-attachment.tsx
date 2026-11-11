@@ -215,15 +215,28 @@ export function FileAttachmentPreviewPanel({
   );
 }
 
+/**
+ * Tappable card for a file attachment inside a message bubble. It shows the
+ * file name, type and size.
+ *
+ * @param file - the attachment to display
+ * @param fallbackSize - size label used when the file has no size of its own
+ * @param onPress - called on tap, which opens the file preview
+ * @param onLongPress - called on long-press, so the message menu opens instead
+ *   of the preview
+ * @param widthRatio - card width as a fraction of the screen width (default 0.72)
+ */
 export function ChatFileAttachmentCard({
   file,
   fallbackSize,
   onPress,
+  onLongPress,
   widthRatio = 0.72,
 }: {
   file: FileLike;
   fallbackSize?: string;
   onPress?: () => void;
+  onLongPress?: () => void;
   widthRatio?: number;
 }) {
   const { colors } = useTheme();
@@ -239,6 +252,7 @@ export function ChatFileAttachmentCard({
     <TouchableOpacity
       activeOpacity={0.85}
       onPress={onPress}
+      onLongPress={onLongPress}
       style={[stylesThemed.card, { width: width * widthRatio }]}
     >
       <FileAttachmentPreviewPanel fileName={displayName} size="message" />

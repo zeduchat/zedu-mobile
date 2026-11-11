@@ -77,7 +77,7 @@ const ChannelCallScreen = ({ route, navigation }: CallScreenProps) => {
   };
 
   return (
-    <Container color={colors.secondary} dark>
+    <Container color={colors.secondary} dark safeBottom>
       <ChannelConnection id={channel?.channels_id as string} />
 
       <MeetingRoom

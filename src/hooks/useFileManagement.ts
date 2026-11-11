@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Share } from 'react-native';
 import {
   pick,
@@ -9,7 +9,7 @@ import {
 import { FileActionKey } from '@/components/files/file-actions-sheet';
 import { FolderActionKey } from '@/components/files/folder-actions-sheet';
 import { PendingUploadFile } from '@/components/files/upload-confirmation-modal';
-import useFiles from '@/hooks/useFiles';
+import useFiles, { fetchFileInfoById } from '@/hooks/useFiles';
 import useFolders from '@/hooks/useFolders';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import UseGetOrgMembers from '@/services/org/get-org-members';
@@ -32,6 +32,7 @@ import {
   FileMode,
   FileSortOption,
 } from '@/utils/file-helpers';
+import { resolveFileOwnerName } from '@/utils/file-owner-name';
 import {
   ActiveFilterSheet,
   DateFilterKey,
@@ -41,6 +42,8 @@ import {
 import { FilesListQueryFilters } from '@/types/files-api';
 import {
   filterFolders,
+  resolveUploaderIds,
+  uploaderApiOwner,
   sortFileResults,
 } from '@/utils/file-management-filters';
 
@@ -56,7 +59,13 @@ export const useFileManagement = (navigation: FileManagementNavigation) => {
   const [fileTypeFilter, setFileTypeFilter] = useState<FileCategory | null>(
     null,
   );
-  const [uploadedByFilter, setUploadedByFilter] = useState<string | null>(null);
+  const [uploadedByFilter, setUploadedByFilterValue] = useState<string | null>(
+    null,
+  );
+  // Set only when a member is picked from the sheet, not for typed text.
+  const [uploadedByMemberId, setUploadedByMemberId] = useState<string | null>(
+    null,
+  );
   const [dateFilter, setDateFilter] = useState<DateFilterKey>('any');
   const [activeSheet, setActiveSheet] = useState<ActiveFilterSheet>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -89,19 +98,47 @@ export const useFileManagement = (navigation: FileManagementNavigation) => {
   const isFolderView = Boolean(openFolder);
   const isFoldersTab = activeTab === 'folders' && !isFolderView;
   const isFilesList = !isFoldersTab;
+  const setUploadedByFilter = useCallback(
+    (value: string | null, memberId: string | null = null) => {
+      setUploadedByFilterValue(value);
+      setUploadedByMemberId(value ? memberId : null);
+    },
+    [],
+  );
   const needsFolderPicker = moveSheetVisible || selectionMode;
   const currentUserId = user?.user_id ?? user?.id;
+
+  const [fileOwnerMap, setFileOwnerMap] = useState<Map<string, string>>(
+    new Map(),
+  );
+  // Cache API owner payloads by file id so filter/remount churn does not N+1.
+  const fileOwnerInfoCacheRef = useRef<Map<string, string | null>>(new Map());
+
+  // Members the "Uploaded By" filter refers to; folders are matched by ID.
+  const uploadedByUserIds = useMemo(
+    () => resolveUploaderIds(orgMembers, uploadedByFilter, uploadedByMemberId),
+    [orgMembers, uploadedByFilter, uploadedByMemberId],
+  );
 
   const filterContext = useMemo(
     () => ({
       mode,
       sortBy,
       uploadedByFilter,
+      uploadedByUserIds,
       dateFilter,
       searchQuery,
       currentUserId,
     }),
-    [mode, sortBy, uploadedByFilter, dateFilter, searchQuery, currentUserId],
+    [
+      mode,
+      sortBy,
+      uploadedByFilter,
+      uploadedByUserIds,
+      dateFilter,
+      searchQuery,
+      currentUserId,
+    ],
   );
 
   const filesApiFilters = useMemo<FilesListQueryFilters>(
@@ -109,10 +146,19 @@ export const useFileManagement = (navigation: FileManagementNavigation) => {
       type:
         fileTypeFilter && fileTypeFilter !== 'all' ? fileTypeFilter : undefined,
       date_modified: dateFilter,
-      owner: uploadedByFilter,
+      owner:
+        uploaderApiOwner(orgMembers, uploadedByFilter, uploadedByMemberId) ??
+        undefined,
       file_name: debouncedFileNameSearch || undefined,
     }),
-    [fileTypeFilter, dateFilter, uploadedByFilter, debouncedFileNameSearch],
+    [
+      fileTypeFilter,
+      dateFilter,
+      orgMembers,
+      uploadedByFilter,
+      uploadedByMemberId,
+      debouncedFileNameSearch,
+    ],
   );
 
   useEffect(() => {
@@ -174,24 +220,84 @@ export const useFileManagement = (navigation: FileManagementNavigation) => {
     [sourceFiles, sortBy],
   );
 
+  // Fetch authoritative owner metadata for each visible file so the list
+  // view shows the real uploader name instead of "Unknown".
+  useEffect(() => {
+    const controller = new AbortController();
+
+    // Seed optimistic names from local data so the list does not flash Unknown
+    // while network owner lookups are in flight.
+    setFileOwnerMap(prev => {
+      const next = new Map(prev);
+      let changed = false;
+      filteredFiles.forEach(file => {
+        if (next.has(file.id)) return;
+        const cachedApiOwner = fileOwnerInfoCacheRef.current.has(file.id)
+          ? fileOwnerInfoCacheRef.current.get(file.id)
+          : undefined;
+        next.set(
+          file.id,
+          resolveFileOwnerName({
+            fileUserId: file.user_id,
+            apiOwner: cachedApiOwner ?? null,
+            orgMembers,
+            currentUser: user,
+          }),
+        );
+        changed = true;
+      });
+      return changed ? next : prev;
+    });
+
+    const fetchOwners = async () => {
+      const missingFiles = filteredFiles.filter(
+        file => !fileOwnerInfoCacheRef.current.has(file.id),
+      );
+
+      await Promise.all(
+        missingFiles.map(async file => {
+          if (controller.signal.aborted) return;
+          const { info, error: fetchError } = await fetchFileInfoById(file.id, {
+            signal: controller.signal,
+          });
+          if (
+            controller.signal.aborted ||
+            (fetchError instanceof Error && fetchError.message === 'aborted')
+          ) {
+            return;
+          }
+          fileOwnerInfoCacheRef.current.set(file.id, info?.owner ?? null);
+        }),
+      );
+
+      if (controller.signal.aborted) return;
+
+      setFileOwnerMap(prev => {
+        const next = new Map(prev);
+        filteredFiles.forEach(file => {
+          if (!fileOwnerInfoCacheRef.current.has(file.id)) return;
+          next.set(
+            file.id,
+            resolveFileOwnerName({
+              fileUserId: file.user_id,
+              apiOwner: fileOwnerInfoCacheRef.current.get(file.id) ?? null,
+              orgMembers,
+              currentUser: user,
+            }),
+          );
+        });
+        return next;
+      });
+    };
+
+    fetchOwners();
+    return () => controller.abort();
+  }, [filteredFiles, orgMembers, user]);
+
   const filteredFolders = useMemo(
     () => filterFolders(folders, filterContext),
     [folders, filterContext],
   );
-
-  const ownerMap = useMemo(() => {
-    const map = new Map<string, string>();
-    orgMembers.forEach(member => {
-      map.set(member.id, member.name || member.username || member.email);
-    });
-    if (currentUserId) {
-      map.set(
-        currentUserId,
-        user?.full_name || user?.username || user?.email || 'You',
-      );
-    }
-    return map;
-  }, [orgMembers, user, currentUserId]);
 
   const pickerFolders = useMemo(
     () => folders.filter(folder => !folder.deleted_at),
@@ -208,9 +314,9 @@ export const useFileManagement = (navigation: FileManagementNavigation) => {
   const activeHasMore = isFoldersTab ? hasMoreFolders : hasMore;
   const activeLoadMore = isFoldersTab ? loadMoreFolders : loadMore;
 
-  const getOwnerName = useCallback(
-    (userId: string) => ownerMap.get(userId) || 'Unknown',
-    [ownerMap],
+  const getFileOwnerName = useCallback(
+    (fileId: string) => fileOwnerMap.get(fileId) || 'Unknown',
+    [fileOwnerMap],
   );
 
   const isFileOwner = useCallback(
@@ -534,7 +640,10 @@ export const useFileManagement = (navigation: FileManagementNavigation) => {
   const handleConfirmUpload = useCallback(async () => {
     if (!pendingUploadFiles.length) return;
 
-    const { data, error: uploadError } = await uploadFiles(pendingUploadFiles);
+    const { data, error: uploadError } = await uploadFiles(
+      pendingUploadFiles,
+      openFolder?.id,
+    );
     if (uploadError || !data) {
       dispatch({
         type: ACTIONS.ERROR,
@@ -548,11 +657,26 @@ export const useFileManagement = (navigation: FileManagementNavigation) => {
 
     setUploadConfirmVisible(false);
     setPendingUploadFiles([]);
-    setActiveTab('files');
-    setOpenFolder(null);
     dispatch({ type: ACTIONS.SUCCESS, payload: 'Files uploaded successfully' });
+
+    if (openFolder) {
+      // Stay in the folder the files were uploaded into.
+      refreshFolderFiles();
+      refreshFolders();
+      return;
+    }
+
+    setActiveTab('files');
     refreshRoot();
-  }, [dispatch, pendingUploadFiles, refreshRoot, uploadFiles]);
+  }, [
+    dispatch,
+    openFolder,
+    pendingUploadFiles,
+    refreshFolderFiles,
+    refreshFolders,
+    refreshRoot,
+    uploadFiles,
+  ]);
 
   const handleNewFolder = useCallback(() => {
     setEditingFolder(null);
@@ -761,7 +885,7 @@ export const useFileManagement = (navigation: FileManagementNavigation) => {
     sheetSearch,
     setSheetSearch,
     closeFilterSheet,
-    getOwnerName,
+    getFileOwnerName,
     sheetUsers,
 
     // Lists

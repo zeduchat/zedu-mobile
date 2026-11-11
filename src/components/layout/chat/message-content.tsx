@@ -1,15 +1,9 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import {
-  Linking,
-  StyleProp,
-  Text,
-  TextStyle,
-  View,
-  ViewStyle,
-} from 'react-native';
+import { StyleProp, Text, TextStyle, View, ViewStyle } from 'react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { createMessageMarkdownStyles } from '@/theme/createMessageStyles';
 import { ensureHttpsUrl } from '@/utils/link-url';
+import { openExternalUrl } from '@/utils/open-external-url';
 import {
   hasMessageContent,
   hasRichMessageContent,
@@ -22,13 +16,13 @@ import {
   isDocumentUrl,
   type DocumentPreviewFile,
 } from '@/utils/document-preview';
-import { ShowNotify } from '@/components/ui/toast';
 import { ChatFilePreviewModal } from './chat-file-attachment';
 import { MessageLinkPreviews } from './link-preview';
 
 type MessageContentProps = {
   html?: string | null;
   onMentionUser?: (userId: string) => void;
+  onMentionChannel?: (channelId: string, label: string) => void;
   containerStyle?: StyleProp<ViewStyle>;
   /** Extra text styles merged into the message body (e.g. bubble padding). */
   textStyle?: StyleProp<TextStyle>;
@@ -51,6 +45,7 @@ type InlineSegment = Exclude<
 export const MessageContent: React.FC<MessageContentProps> = ({
   html,
   onMentionUser,
+  onMentionChannel,
   containerStyle,
   textStyle,
   media,
@@ -102,17 +97,7 @@ export const MessageContent: React.FC<MessageContentProps> = ({
   );
 
   const openExternalLink = useCallback(async (url: string) => {
-    const href = ensureHttpsUrl(url);
-    try {
-      const supported = await Linking.canOpenURL(href);
-      if (supported) {
-        await Linking.openURL(href);
-      } else {
-        ShowNotify('Error', "Don't know how to open this URL: " + href);
-      }
-    } catch {
-      ShowNotify('Error', 'An error occurred while opening the link');
-    }
+    await openExternalUrl(url);
   }, []);
 
   const handleUrlPress = useCallback(
@@ -178,6 +163,23 @@ export const MessageContent: React.FC<MessageContentProps> = ({
           );
         }
 
+        if (segment.mentionKind === 'channel-ref') {
+          return (
+            <Text
+              key={key}
+              style={styles.channelMention}
+              onPress={() => {
+                const targetChannelId = segment.channelId || segment.userId;
+                if (targetChannelId) {
+                  onMentionChannel?.(targetChannelId, segment.label);
+                }
+              }}
+            >
+              #{segment.label}
+            </Text>
+          );
+        }
+
         const isChannel = segment.mentionKind === 'channel';
         return (
           <Text
@@ -193,7 +195,7 @@ export const MessageContent: React.FC<MessageContentProps> = ({
           </Text>
         );
       }),
-    [handleUrlPress, markStyle, onMentionUser, styles],
+    [handleUrlPress, markStyle, onMentionChannel, onMentionUser, styles],
   );
 
   const blocks = useMemo(() => {

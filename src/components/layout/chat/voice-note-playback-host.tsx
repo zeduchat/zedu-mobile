@@ -45,6 +45,7 @@ export const VoiceNotePlaybackHost = () => {
           remoteUri={track.voiceMedia.file_link}
           isPlaying={playback.isPlaying}
           shouldResume={playback.webShouldResume}
+          playbackSpeed={playback.playbackSpeed}
           onReady={voiceNotePlaybackService.handleWebViewReady}
           onProgress={voiceNotePlaybackService.handleWebViewProgress}
           onEnded={voiceNotePlaybackService.handleWebViewEnded}

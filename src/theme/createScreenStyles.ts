@@ -2,11 +2,40 @@ import { Platform, StyleSheet } from 'react-native';
 import type { ThemeColors } from './types';
 
 export function createSettingsStyles(colors: ThemeColors) {
+  // Soft brand-tinted tile behind each settings icon (10% opacity, works in both themes)
+  const iconTile = {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    backgroundColor: `${colors.primary}1A`,
+  };
+
   return StyleSheet.create({
     header: {
       backgroundColor: colors.secondary,
       paddingHorizontal: 10,
-      paddingVertical: Platform.OS === 'ios' ? 30 : 20,
+      paddingTop: Platform.OS === 'ios' ? 12 : 8,
+      paddingBottom: Platform.OS === 'ios' ? 20 : 16,
+    },
+    headerNav: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      minHeight: 44,
+      marginBottom: 12,
+      paddingHorizontal: 2,
+    },
+    backBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingVertical: 6,
+      paddingRight: 12,
+    },
+    headerTitle: {
+      color: colors.white,
+      fontSize: 18,
     },
     profileCard: {
       flexDirection: 'row',
@@ -58,15 +87,16 @@ export function createSettingsStyles(colors: ThemeColors) {
       borderColor: colors.border,
     },
     itemRow: { flexDirection: 'row', alignItems: 'center', padding: 14 },
-    iconContainer: { width: 32, alignItems: 'center' },
+    iconContainer: iconTile,
     textContainer: { flex: 1, marginLeft: 12 },
-    itemTitle: { fontSize: 16, color: colors.textPrimary },
+    itemTitle: { fontSize: 15, color: colors.textPrimary },
     itemSubtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
     divider: {
       height: StyleSheet.hairlineWidth,
       backgroundColor: colors.border,
-      marginLeft: 58,
+      marginLeft: 62,
     },
+    dangerCard: { marginTop: 24, marginBottom: 40, borderColor: colors.error },
     statusRow: {
       paddingVertical: 15,
       paddingHorizontal: 16,
@@ -79,11 +109,7 @@ export function createSettingsStyles(colors: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
     },
-    statusEmojiContainer: {
-      width: 28,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
+    statusEmojiContainer: iconTile,
     statusTextContainer: {
       flex: 1,
       marginLeft: 12,
@@ -241,6 +267,9 @@ export function createChatDetailStyles(colors: ThemeColors) {
     moreBtn: { padding: 5 },
     headerAvatarContainer: { marginLeft: 5 },
     headerAvatar: { width: 36, height: 36, borderRadius: 18 },
+    headerPresenceText: { marginTop: 2 },
+    headerPresenceOnline: { color: colors.presenceOnlineText },
+    headerPresenceOffline: { color: colors.textSecondary },
     headerIconMore: {
       height: 20,
       objectFit: 'contain',
@@ -399,6 +428,30 @@ export function createSettingsSubScreenStyles(colors: ThemeColors) {
     },
     timeValue: { fontSize: 16, color: colors.textPrimary, fontWeight: '400' },
     noteText: { fontSize: 14, color: colors.textSecondary },
+    noteBox: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 10,
+      padding: 14,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surfaceElevated,
+    },
+    noteIcon: {
+      width: 18,
+      height: 18,
+      marginTop: 1,
+      objectFit: 'contain',
+      tintColor: colors.textSecondary,
+    },
+    noteBoxText: { flex: 1 },
+    passwordMatchInput: { marginBottom: 0 },
+    passwordMatchText: {
+      color: colors.primary,
+      marginTop: 4,
+      marginBottom: 20,
+    },
     toggleRow: {
       flexDirection: 'row',
       alignItems: 'center',

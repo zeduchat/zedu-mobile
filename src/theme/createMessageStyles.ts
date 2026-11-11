@@ -5,6 +5,7 @@ import {
   type TextStyle,
 } from 'react-native';
 import { normalize } from '@/utils/normalize';
+import { fonts } from '@/theme/typography';
 import type { ThemeColors } from './types';
 
 export function createMessageItemStyles(colors: ThemeColors, width: number) {
@@ -58,6 +59,37 @@ export function createMessageItemStyles(colors: ThemeColors, width: number) {
     messageWrapper: { maxWidth: '85%' },
     sentWrapper: { alignSelf: 'flex-end' },
     receivedWrapper: { alignSelf: 'flex-start' },
+    // Sender avatar sits in the wrapper's margin so bubbles stay aligned.
+    withSenderAvatarSent: { marginRight: normalize(28) + 6 },
+    withSenderAvatarReceived: { marginLeft: normalize(28) + 6 },
+    senderAvatarSent: {
+      position: 'absolute',
+      bottom: 0,
+      right: -(normalize(28) + 6),
+    },
+    senderAvatarReceived: {
+      position: 'absolute',
+      bottom: 0,
+      left: -(normalize(28) + 6),
+    },
+    replyBarSentWithAvatar: { marginRight: 8 + normalize(28) + 6 },
+    replyBarReceivedWithAvatar: { marginLeft: 8 + normalize(28) + 6 },
+    newMarker: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 4,
+      marginBottom: 10,
+    },
+    newMarkerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: colors.unreadMarker,
+    },
+    newMarkerText: {
+      color: colors.unreadMarker,
+      letterSpacing: 0.6,
+      marginLeft: 6,
+    },
     bubble: {
       padding: 4,
       borderRadius: 12,
@@ -496,12 +528,16 @@ export function createChatInputStyles(colors: ThemeColors) {
       paddingHorizontal: 12,
       paddingVertical: 4,
       alignItems: 'center',
+      minHeight: 52,
     },
     input: {
       flex: 1,
-      paddingTop: Platform.OS === 'ios' ? 10 : 8,
-      paddingBottom: Platform.OS === 'ios' ? 10 : 8,
+      minHeight: 44,
+      paddingTop: Platform.OS === 'ios' ? 10 : 10,
+      paddingBottom: Platform.OS === 'ios' ? 10 : 10,
+      paddingHorizontal: 0,
       fontSize: 16,
+      fontFamily: fonts.regular,
       color: colors.textPrimary,
     },
     composerMeasureText: {
@@ -511,32 +547,43 @@ export function createChatInputStyles(colors: ThemeColors) {
       top: 4,
       fontSize: 16,
       lineHeight: 20,
-      paddingTop: Platform.OS === 'ios' ? 10 : 8,
-      paddingBottom: Platform.OS === 'ios' ? 10 : 8,
+      fontFamily: fonts.regular,
+      paddingTop: Platform.OS === 'ios' ? 10 : 10,
+      paddingBottom: Platform.OS === 'ios' ? 10 : 10,
       color: colors.textPrimary,
+    },
+    composerInputBox: {
+      flex: 1,
+      minHeight: 44,
+      position: 'relative',
+      justifyContent: 'center',
     },
     inputOverlay: {
       position: 'absolute',
       left: 0,
-      right: 36,
+      right: 0,
       top: 0,
       bottom: 0,
-      paddingVertical: 8,
       zIndex: 1,
     },
     inputTransparentText: {
       color: 'transparent',
     },
+    composerNormalText: {
+      color: colors.textPrimary,
+      fontSize: 16,
+      fontFamily: fonts.regular,
+    },
     composerMentionText: {
       color: colors.primary,
       fontSize: 16,
-      lineHeight: 22,
+      fontFamily: fonts.regular,
     },
     composerChannelMentionText: {
       color: colors.channelMentionForeground,
       backgroundColor: colors.channelMentionBackground,
       fontSize: 16,
-      lineHeight: 22,
+      fontFamily: fonts.regular,
     },
     emojiBtn: { padding: 4 },
     recordingBar: {

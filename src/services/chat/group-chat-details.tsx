@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { ACTIONS } from '@/store/types';
 import { useDataContext } from '@/store/useDataContext';
 import { GetRequest } from '@/utils/requests';
@@ -13,6 +13,10 @@ const UseGroupChatDetails = ({ channel_id }: Props) => {
   const [page, setPage] = useState(1);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const isFocusedRef = useRef(false);
+  // The conversation whose first page has loaded, so screens can tell when
+  // dmsChat belongs to this channel rather than the previous one.
+  const [loadedChannelId, setLoadedChannelId] = useState<string | null>(null);
 
   const fetchFirstPage = useCallback(async () => {
     const { data } = await GetRequest(
@@ -35,13 +39,26 @@ const UseGroupChatDetails = ({ channel_id }: Props) => {
         setHasMore((data.data?.length || 0) >= 50);
       }
     }
+    setLoadedChannelId(channel_id);
   }, [channel_id, dispatch]);
 
   useFocusEffect(
     useCallback(() => {
+      isFocusedRef.current = true;
       fetchFirstPage();
+      return () => {
+        isFocusedRef.current = false;
+      };
     }, [fetchFirstPage, state?.callback]),
   );
+
+  useEffect(() => {
+    if (isFocusedRef.current) {
+      fetchFirstPage();
+    }
+    // Match DM chat-details: refetch when the conversation id changes while focused.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channel_id]);
 
   const loadMore = useCallback(async () => {
     if (isFetchingMore || !hasMore || state?.dmsChat?.length < 50) return;
@@ -81,7 +98,11 @@ const UseGroupChatDetails = ({ channel_id }: Props) => {
     }
   }, [channel_id, page, isFetchingMore, hasMore, dispatch, state?.dmsChat]);
 
-  return { loadMore, isFetchingMore };
+  return {
+    loadMore,
+    isFetchingMore,
+    isInitialLoading: loadedChannelId !== channel_id,
+  };
 };
 
 export default UseGroupChatDetails;

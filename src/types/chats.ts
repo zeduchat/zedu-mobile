@@ -14,6 +14,7 @@ export interface Chat {
   preview_thread: any;
   is_favourite: boolean;
   is_suggested: boolean;
+  online?: boolean;
 }
 
 export interface Participant {
@@ -21,6 +22,7 @@ export interface Participant {
   default_avatar_url: string;
   email: string;
   user_id: string;
+  id?: string;
   username: string;
   is_admin?: boolean;
   online?: boolean;

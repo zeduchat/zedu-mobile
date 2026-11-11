@@ -78,11 +78,12 @@ export function createChannelSetupStyles(colors: ThemeColors) {
         borderRadius: normalize(28),
         alignItems: 'center',
         justifyContent: 'center',
+        overflow: 'visible',
       },
       itemOnlineBadge: {
         position: 'absolute',
-        bottom: 2,
-        right: 2,
+        bottom: -2,
+        right: -2,
         width: 12,
         height: 12,
         borderRadius: 6,
@@ -407,13 +408,10 @@ export function createChannelSetupStyles(colors: ThemeColors) {
     userAvatar: StyleSheet.create({
       avatarContainer: {
         position: 'relative',
+        overflow: 'visible',
       },
       onlineBadge: {
         position: 'absolute',
-        bottom: 0,
-        right: 0,
-        borderWidth: 2,
-        borderColor: colors.white,
       },
     }),
   };

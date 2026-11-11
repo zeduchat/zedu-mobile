@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { View, FlatList, Keyboard, ActivityIndicator } from 'react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { createChatDetailStyles } from '@/theme/createScreenStyles';
@@ -27,14 +27,29 @@ import { ShowNotify } from '@/components/ui/toast';
 import MentionUserBottomSheet, {
   MentionUserBottomSheetRef,
 } from '@/components/layout/chat/mention-user-bottomsheet';
+import { MentionSheet } from '@/components/layout/chat/mention-sheet';
+import { buildMentionHtmlTag } from '@/utils/message-text';
+import { recordSuccessfulMessageResult } from '@/utils/share-zedu-prompt';
 import ThreadScreenHeader from '@/components/layout/chat/thread-screen-header';
+import {
+  createScrollToIndexFailedHandler,
+  recordChatItemHeight,
+  scrollChatToIndex,
+} from '@/utils/scroll-to-pinned-message';
 
 const ChannelThreadScreen = ({ navigation, route }: any) => {
   const { colors } = useTheme();
   const styles = useMemo(() => createChatDetailStyles(colors), [colors]);
   const [message, setMessage] = useState('');
   const [isEmojiOpen, setIsEmojiOpen] = useState(false);
+  const [mentionState, setMentionState] = useState<{
+    query: string;
+    pos: number;
+    trigger: '@' | '#';
+  } | null>(null);
+  const [mentionsMetadata, setMentionsMetadata] = useState<any[]>([]);
   const flatListRef = useRef<FlatList>(null);
+  const hasScrolledToHighlight = useRef(false);
   const actionSheetRef = useRef<any>(null);
   const pickerSheetRef = useRef<any>(null);
   const mentionUserSheetRef = useRef<MentionUserBottomSheetRef>(null);
@@ -44,6 +59,7 @@ const ChannelThreadScreen = ({ navigation, route }: any) => {
     type: 'image' | 'file';
   } | null>(null);
   const [isEditorVisible, setIsEditorVisible] = useState(false);
+  const [highlightMsgId, setHighlightMsgId] = useState<string | null>(null);
   const { state, dispatch } = useDataContext();
   const { handleTyping } = useTyping(state.replySubscription);
   const {
@@ -53,7 +69,7 @@ const ChannelThreadScreen = ({ navigation, route }: any) => {
     channel: _channel,
     channelDetails,
   } = state;
-  const { thread_id, channel_id } = route.params;
+  const { thread_id, channel_id, highlight_message_id } = route.params;
 
   const { loadMore, isFetchingMore } = UseReplyChat({
     channel_id: channel_id as string,
@@ -63,6 +79,33 @@ const ChannelThreadScreen = ({ navigation, route }: any) => {
   const { uploadFiles, clearUploads } = useFileUpload();
 
   const [isVoiceUploading, setIsVoiceUploading] = useState(false);
+
+  const handleScrollToIndexFailed = useMemo(
+    () => createScrollToIndexFailedHandler(flatListRef),
+    [],
+  );
+
+  useEffect(() => {
+    if (
+      !highlight_message_id ||
+      hasScrolledToHighlight.current ||
+      !replyChat?.length
+    ) {
+      return;
+    }
+
+    const index = replyChat.findIndex(
+      (msg: any) =>
+        String(msg.id ?? msg.message_id) === String(highlight_message_id),
+    );
+    if (index < 0) return;
+
+    hasScrolledToHighlight.current = true;
+    setHighlightMsgId(String(highlight_message_id));
+    scrollChatToIndex(flatListRef, index, replyChat);
+    const timer = setTimeout(() => setHighlightMsgId(null), 2500);
+    return () => clearTimeout(timer);
+  }, [highlight_message_id, replyChat]);
 
   const handleVoiceRecorded = async (uri: string) => {
     setIsVoiceUploading(true);
@@ -99,13 +142,105 @@ const ChannelThreadScreen = ({ navigation, route }: any) => {
     pickerSheetRef.current?.expand();
   };
 
+  const mentionParticipants = useMemo(
+    () => channelDetails?.participants || _channel?.participants || [],
+    [channelDetails?.participants, _channel?.participants],
+  );
+
+  const userChannelsList = useMemo(
+    () => state.userChannels || [],
+    [state.userChannels],
+  );
+
+  const handleMentionTrigger = (
+    query: string,
+    pos: number,
+    trigger: '@' | '#' = '@',
+  ) => {
+    setMentionState({ query, pos, trigger });
+  };
+
+  const handleMentionSelect = (selectedUser: any) => {
+    if (!mentionState) return;
+
+    const { pos, query } = mentionState;
+    const mentionStart = pos - query.length - 1;
+
+    const textBefore = message.substring(0, mentionStart);
+    const textAfter = message.substring(pos);
+
+    const newMessage = `${textBefore}@${selectedUser.username} ${textAfter}`;
+
+    setMessage(newMessage);
+
+    const mentionType =
+      selectedUser.type === 'channel' || selectedUser.username === 'channel'
+        ? 'channel'
+        : 'user';
+
+    setMentionsMetadata(prev => [
+      ...prev,
+      {
+        id:
+          mentionType === 'channel' ? 'channel' : String(selectedUser.user_id),
+        label: mentionType === 'channel' ? 'channel' : selectedUser.username,
+        type: mentionType,
+      },
+    ]);
+
+    setMentionState(null);
+  };
+
+  const handleChannelMentionSelect = (selectedChannel: any) => {
+    if (!mentionState) return;
+
+    const { pos, query } = mentionState;
+    const mentionStart = pos - query.length - 1;
+
+    const textBefore = message.substring(0, mentionStart);
+    const textAfter = message.substring(pos);
+
+    const newMessage = `${textBefore}#${selectedChannel.name} ${textAfter}`;
+    setMessage(newMessage);
+
+    const channelId = String(
+      selectedChannel.channels_id || selectedChannel.channel_id,
+    );
+    const channelLabel = selectedChannel.name;
+
+    setMentionsMetadata(prev => {
+      const alreadyExists = prev.some(
+        m => m.id === channelId && m.type === 'channel-ref',
+      );
+      if (alreadyExists) return prev;
+      return [
+        ...prev,
+        {
+          id: channelId,
+          label: channelLabel,
+          type: 'channel-ref',
+        },
+      ];
+    });
+
+    setMentionState(null);
+  };
+
   const handleSendMessage = async (content: string, medias: any[] = []) => {
     if (!content.trim() && medias.length === 0) return;
 
     handleTyping(false);
 
     const tempId = uuid.v4() as string;
-    const formattedContent = `<p>${content}</p>`;
+    let formattedContent = content;
+    mentionsMetadata.forEach(m => {
+      const prefix = m.type === 'channel-ref' ? '#' : '@';
+      formattedContent = formattedContent.replace(
+        `${prefix}${m.label}`,
+        buildMentionHtmlTag(m),
+      );
+    });
+    const finalHtml = `<p>${formattedContent}</p>`;
 
     const optimisticMessage = {
       channels_id: channel_id,
@@ -114,7 +249,7 @@ const ChannelThreadScreen = ({ navigation, route }: any) => {
       thread_id: thread_id,
       username: state.user?.username || 'You',
       avatar_url: state.user?.avatar_url,
-      message: formattedContent,
+      message: finalHtml,
       created_at: new Date().toISOString(),
       status: 'pending',
       type: 'message',
@@ -130,18 +265,24 @@ const ChannelThreadScreen = ({ navigation, route }: any) => {
     });
 
     setMessage('');
+    setMentionsMetadata([]);
 
     const payload = {
       channels_id: channel_id,
       thread_id: thread_id,
-      content: formattedContent,
+      content: finalHtml,
       media: medias,
       user_id: state.user?.user_id,
+      mentions: mentionsMetadata,
     };
 
     const { error } = await PostRequest(
       getThreadMessageSendUrl('channel', channel_id),
       payload,
+    );
+    await recordSuccessfulMessageResult(
+      state.user?.user_id || state.user?.id,
+      error,
     );
 
     dispatch({
@@ -221,6 +362,47 @@ const ChannelThreadScreen = ({ navigation, route }: any) => {
     }
   };
 
+  const handleMentionChannel = (targetChannelId: string) => {
+    const allKnownChannels = [
+      ...(state.userChannels || []),
+      ...(state.allChannels || []),
+    ];
+    const targetChannel = allKnownChannels.find(
+      (ch: any) =>
+        String(ch.channels_id || ch.channel_id) === String(targetChannelId),
+    );
+
+    if (!targetChannel) {
+      ShowNotify('Info', "You're not a member of this channel");
+      return;
+    }
+
+    dispatch({ type: ACTIONS.CHANNEL, payload: targetChannel });
+    dispatch({
+      type: ACTIONS.CHANNELS_CHAT,
+      payload: { data: targetChannel.preview_thread ?? [], page: 1 },
+    });
+
+    if (targetChannel.thread_count > 0) {
+      dispatch({
+        type: ACTIONS.RESET_CHANNEL_THREAD_COUNT,
+        payload: targetChannel.channels_id || targetChannel.channel_id,
+      });
+    }
+
+    dispatch({
+      type: ACTIONS.CHANNEL_CALLBACK,
+      payload: !state.channelCallback,
+    });
+
+    navigation.navigate('ChannelStack', {
+      screen: 'ChannelChat',
+      params: {
+        channel_id: targetChannel.channels_id || targetChannel.channel_id,
+      },
+    });
+  };
+
   return (
     <Container color={colors.topNavigation}>
       <ReplyConnection id={thread_id as string} />
@@ -238,26 +420,45 @@ const ChannelThreadScreen = ({ navigation, route }: any) => {
         data={replyChat}
         inverted
         keyExtractor={item => String(item.id ?? item.message_id)}
-        extraData={replyChat}
+        extraData={[replyChat, highlightMsgId]}
+        onScrollToIndexFailed={handleScrollToIndexFailed}
         renderItem={({ item, index }) => (
-          <ThreadMessageItem
-            item={{
-              ...item,
-              id: item.id ?? item.message_id,
-              text: item.message || '',
-              message: item.message || '',
+          <View
+            onLayout={e =>
+              recordChatItemHeight(
+                item.id ?? item.message_id,
+                e.nativeEvent.layout.height,
+              )
+            }
+            style={{
+              backgroundColor:
+                highlightMsgId &&
+                String(item.id ?? item.message_id) === String(highlightMsgId)
+                  ? colors.chatHighlight
+                  : 'transparent',
             }}
-            index={index}
-            messages={replyChat}
-            inverted={true}
-            onLongPress={() => handleLongPress(item)}
-            onMentionUser={handleMentionUser}
-          />
+          >
+            <ThreadMessageItem
+              item={{
+                ...item,
+                id: item.id ?? item.message_id,
+                text: item.message || '',
+                message: item.message || '',
+              }}
+              index={index}
+              messages={replyChat}
+              inverted={true}
+              onLongPress={() => handleLongPress(item)}
+              onMentionUser={handleMentionUser}
+              onMentionChannel={handleMentionChannel}
+            />
+          </View>
         )}
         ListFooterComponent={
           <ThreadItem
             item={selectedMessage}
             onMentionUser={handleMentionUser}
+            onMentionChannel={handleMentionChannel}
           />
         }
         contentContainerStyle={styles.listContent}
@@ -302,6 +503,23 @@ const ChannelThreadScreen = ({ navigation, route }: any) => {
       )}
 
       <ChatKeyboardAvoidingView>
+        {mentionState &&
+          (mentionState.trigger === '#' ? (
+            <MentionSheet
+              mode="channel"
+              query={mentionState.query}
+              channels={userChannelsList}
+              onSelect={handleChannelMentionSelect}
+            />
+          ) : (
+            <MentionSheet
+              query={mentionState.query}
+              showChannelMention
+              participants={mentionParticipants}
+              onSelect={handleMentionSelect}
+            />
+          ))}
+
         <ChatInput
           message={message}
           setMessage={setMessage}
@@ -317,6 +535,12 @@ const ChannelThreadScreen = ({ navigation, route }: any) => {
           onCloseEmoji={() => setIsEmojiOpen(false)}
           isEmojiOpen={isEmojiOpen}
           onFocus={() => pickerSheetRef.current?.close()}
+          onMentionTrigger={handleMentionTrigger}
+          onMentionCancel={() => {
+            setMentionState(null);
+          }}
+          highlightMentions
+          composerMentions={mentionsMetadata}
         />
 
         {isEmojiOpen && (

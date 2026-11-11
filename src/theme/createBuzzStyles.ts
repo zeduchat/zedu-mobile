@@ -945,7 +945,7 @@ export function createBuzzCallControlStyles(colors: ThemeColors) {
     bottomContainer: {
       position: 'relative',
       paddingHorizontal: 15,
-      paddingBottom: 30,
+      paddingBottom: Platform.OS === 'ios' ? 30 : 12,
     },
     controlBar: {
       flexDirection: 'row',
@@ -1343,7 +1343,7 @@ export function createBuzzSidebarStyles(colors: ThemeColors) {
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: colors.border,
       padding: 16,
-      backgroundColor: colors.white,
+      backgroundColor: colors.surface,
     },
     typingIndicator: {
       flexDirection: 'row',
@@ -2168,6 +2168,11 @@ export function createBuzzGreenRoomComponentStyles(colors: ThemeColors) {
   });
 }
 
+/**
+ * Styles for the welcome screen: a centred stack of logo, heading, consent
+ * text and buttons. The stack sits in a ScrollView so it stays reachable on
+ * short screens.
+ */
 export function createWelcomeScreenStyles(colors: ThemeColors) {
   return StyleSheet.create({
     container: {
@@ -2175,8 +2180,12 @@ export function createWelcomeScreenStyles(colors: ThemeColors) {
       backgroundColor: colors.surface,
       paddingHorizontal: 25,
     },
+    scrollContent: {
+      flexGrow: 1,
+      justifyContent: 'center',
+    },
     topSection: {
-      flex: 2,
+      marginBottom: 40,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -2201,7 +2210,7 @@ export function createWelcomeScreenStyles(colors: ThemeColors) {
       paddingHorizontal: 40,
     },
     middleSection: {
-      flex: 1,
+      marginBottom: 48,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -2220,7 +2229,6 @@ export function createWelcomeScreenStyles(colors: ThemeColors) {
       color: colors.primary,
     },
     bottomSection: {
-      flex: 1,
       justifyContent: 'flex-end',
       paddingBottom: 20,
     },

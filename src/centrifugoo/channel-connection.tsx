@@ -160,6 +160,75 @@ const ChannelConnection = ({ id }: Props) => {
         }
       }
 
+      // PINNED CHANNEL MESSAGE
+      if (
+        data?.section === 'thread_message' &&
+        data?.notification_type === 'pinned_message_event'
+      ) {
+        const ids = data?.modification_ids;
+        const details = data?.pinned_details;
+
+        dispatch({
+          type: ACTIONS.UPDATE_CHANNEL_PIN,
+          payload: {
+            threadId: ids?.thread_id,
+            is_pin: true,
+            details,
+          },
+        });
+      }
+
+      // PINNED CHANNEL REPLY
+      if (
+        data?.section === 'reply_message' &&
+        data?.notification_type === 'pinned_message_event'
+      ) {
+        const ids = data?.modification_ids;
+
+        dispatch({
+          type: ACTIONS.UPDATE_REPLY_PIN,
+          payload: {
+            threadId: ids?.message_id,
+            is_pin: true,
+            details: data?.pinned_details,
+          },
+        });
+      }
+
+      // UNPINNED CHANNEL MESSAGE
+      if (
+        data?.section === 'thread_message' &&
+        data?.notification_type === 'unpinned_message_event'
+      ) {
+        const ids = data?.modification_ids;
+
+        dispatch({
+          type: ACTIONS.UPDATE_CHANNEL_PIN,
+          payload: {
+            threadId: ids?.thread_id,
+            is_pin: false,
+            details: null,
+          },
+        });
+      }
+
+      // UNPINNED CHANNEL REPLY
+      if (
+        data?.section === 'reply_message' &&
+        data?.notification_type === 'unpinned_message_event'
+      ) {
+        const ids = data?.modification_ids;
+
+        dispatch({
+          type: ACTIONS.UPDATE_REPLY_PIN,
+          payload: {
+            threadId: ids?.message_id,
+            is_pin: false,
+            details: null,
+          },
+        });
+      }
+
       // DELETE CHANNEL MESSAGE
       if (
         data?.section === 'thread_message' &&

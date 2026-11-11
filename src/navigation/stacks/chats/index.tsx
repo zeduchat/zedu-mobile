@@ -10,6 +10,12 @@ import GroupChatThreadScreen from '@/screens/chats/group-chat-thread';
 import GroupDetailsScreen from '@/screens/chats/group-details';
 import { GroupAddNewMembersScreen } from '@/screens/chats/group-add-new-members';
 import DmDetailsScreen from '@/screens/chats/dm-details';
+import UserDetailScreen from '@/screens/chats/user-detail';
+import GroupUserDetailScreen from '@/screens/chats/group-user-detail';
+import MediaGalleryScreen from '@/screens/chats/media-gallery';
+import ChatThreadScreen from '@/screens/chats/chat-thread';
+import PinnedMessagesScreen from '@/screens/chats/pinned-messages';
+import type { PinScope } from '@/utils/resolve-pinned-messages';
 
 export type ChatStackParamList = {
   ChatDetails: {
@@ -19,12 +25,14 @@ export type ChatStackParamList = {
     restore_participants?: any[];
     restore_dms_chat?: any[];
     fromNotification?: boolean;
+    unread_count?: number;
   };
   CallScreen: undefined;
   GroupChatDetails: {
     participant_id?: string;
     channel_id: string;
     fromNotification?: boolean;
+    unread_count?: number;
   };
   GroupCallScreen: undefined;
   GroupAddMembersScreen: undefined;
@@ -35,11 +43,13 @@ export type ChatStackParamList = {
   GroupChatThreadScreen: {
     channel_id: string;
     thread_id: string;
+    highlight_message_id?: string;
   };
   ChatThreadScreen: {
     channel_id: string;
     thread_id: string;
     chatType?: 'dm' | 'group_dm' | 'channel';
+    highlight_message_id?: string;
   };
   GroupDetailsScreen: {
     participant_id?: string;
@@ -60,11 +70,11 @@ export type ChatStackParamList = {
     channel_id?: string;
     preview_media?: any[];
   };
+  PinnedMessages: {
+    channel_id: string;
+    scope?: PinScope;
+  };
 };
-import UserDetailScreen from '@/screens/chats/user-detail';
-import GroupUserDetailScreen from '@/screens/chats/group-user-detail';
-import MediaGalleryScreen from '@/screens/chats/media-gallery';
-import ChatThreadScreen from '@/screens/chats/chat-thread';
 
 const Stack = createStackNavigator<ChatStackParamList>();
 
@@ -101,5 +111,6 @@ export const ChatStack = () => (
       component={GroupUserDetailScreen}
     />
     <Stack.Screen name="MediaGalleryScreen" component={MediaGalleryScreen} />
+    <Stack.Screen name="PinnedMessages" component={PinnedMessagesScreen} />
   </Stack.Navigator>
 );

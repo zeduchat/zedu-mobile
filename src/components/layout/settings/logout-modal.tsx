@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { AppText } from '@/components/ui/text';
 import { clearAllData } from '@/utils/helper';
+import { unregisterAndroidPushToken } from '@/services/android-fcm.service';
 import { useDataContext } from '@/store/useDataContext';
 import { ACTIONS } from '@/store/types';
 import { useNavigation } from '@react-navigation/native';
@@ -29,6 +30,7 @@ const LogoutConfirmationModal = ({ visible, onClose }: LogoutModalProps) => {
   const logout = async () => {
     try {
       setLoading(true);
+      await unregisterAndroidPushToken();
       await clearAllData();
 
       dispatch({ type: ACTIONS.TOKEN, payload: null });

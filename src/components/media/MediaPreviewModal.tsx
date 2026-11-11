@@ -6,6 +6,7 @@ import { AppText } from '@/components/ui/text';
 import { useTheme } from '@/theme/ThemeProvider';
 import { createMediaPreviewModalStyles } from '@/theme/createStep10Styles';
 import ZoomableImage from '@/components/media/ZoomableImage';
+import AudioPreview from '@/components/media/audio-preview';
 
 const { width } = Dimensions.get('window');
 
@@ -42,6 +43,29 @@ const isVideo = (mime: string, fileName: string) => {
   return false;
 };
 
+const isAudio = (item: PreviewMediaItem) => {
+  const extensions = ['wav', 'm4a', 'mp3', 'ogg', 'aac', 'flac'];
+  const extension = (value: string) => {
+    try {
+      return decodeURIComponent(value)
+        .split('?')[0]
+        .split('.')
+        .pop()
+        ?.toLowerCase();
+    } catch {
+      return value.split('?')[0].split('.').pop()?.toLowerCase();
+    }
+  };
+  return (
+    item.mime_type?.toLowerCase().startsWith('audio/') ||
+    [
+      extension(item.file_name || ''),
+      item.file_type?.toLowerCase(),
+      extension(item.file_link || ''),
+    ].some(value => extensions.includes(value || ''))
+  );
+};
+
 const isImage = (mime: string) => mime && mime.startsWith('image');
 
 const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
@@ -55,9 +79,10 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
     [colors],
   );
 
-  if (!item) return null;
-  const video = isVideo(item.mime_type, item.file_name);
-  const image = isImage(item.mime_type);
+  if (!item || !visible) return null;
+  const audio = isAudio(item);
+  const video = !audio && isVideo(item.mime_type, item.file_name);
+  const image = !audio && isImage(item.mime_type);
 
   return (
     <Modal
@@ -75,6 +100,13 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
           {image && (
             <ZoomableImage uri={item.file_link} style={styles.modalImage} />
           )}
+          {audio && (
+            <AudioPreview
+              key={`${item.id}:${item.file_link}`}
+              uri={item.file_link}
+              name={item.file_name}
+            />
+          )}
           {video && (
             <Video
               source={{ uri: item.file_link }}
@@ -84,7 +116,7 @@ const MediaPreviewModal: React.FC<MediaPreviewModalProps> = ({
               paused={false}
             />
           )}
-          {!image && !video && (
+          {!image && !video && !audio && (
             <View style={styles.filePreviewBox}>
               <Ionicons
                 name="document-outline"

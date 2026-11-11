@@ -76,7 +76,7 @@ const CallScreen = ({ route, navigation }: CallScreenProps) => {
   };
 
   return (
-    <Container color={colors.secondary} dark>
+    <Container color={colors.secondary} dark safeBottom>
       <AgoraConnection id={buzzCode} />
 
       <MeetingRoom

@@ -161,7 +161,7 @@ const StatusSheet = forwardRef<AppBottomSheetRef, Props>(
               <Ionicons
                 name={mode === 'clear' ? 'arrow-back' : 'close'}
                 size={24}
-                color="#1D1C1D"
+                color={colors.textPrimary}
               />
             </TouchableOpacity>
             <AppText variant="bold" style={styles.title}>
@@ -169,12 +169,12 @@ const StatusSheet = forwardRef<AppBottomSheetRef, Props>(
             </AppText>
             <TouchableOpacity onPress={handleSubmit} style={styles.saveBtn}>
               {loading ? (
-                <ActivityIndicator />
+                <ActivityIndicator color={colors.primary} />
               ) : (
                 <Ionicons
                   name="checkmark"
                   size={25}
-                  color={text ? colors.secondary : '#868686'}
+                  color={text ? colors.primary : colors.textMuted}
                   style={{ opacity: text ? 1 : 0.5 }}
                 />
               )}

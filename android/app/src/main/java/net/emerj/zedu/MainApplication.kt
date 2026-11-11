@@ -16,12 +16,14 @@ class MainApplication : Application(), ReactApplication {
         PackageList(this).packages.apply {
           add(net.emerj.zedu.calloverlay.CallOverlayPackage())
           add(IncomingCallPackage())
+          add(FirebasePushPackage())
         },
     )
   }
 
   override fun onCreate() {
     super.onCreate()
+    FirebasePushChannels.ensure(this)
     loadReactNative(this)
   }
 }

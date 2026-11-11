@@ -95,6 +95,7 @@ const ChatInput = ({
   const messageRef = useRef(message);
   const skipSelectionMentionSync = useRef(false);
   const isFocusedRef = useRef(false);
+  const mentionActiveRef = useRef(false);
 
   useEffect(() => {
     messageRef.current = message;
@@ -202,8 +203,14 @@ const ChatInput = ({
   const updateMentionTrigger = (text: string, cursorPos: number) => {
     const mention = getActiveMention(text, cursorPos);
     if (mention) {
-      onMentionTrigger?.(mention.query, mention.pos);
-    } else {
+      mentionActiveRef.current = true;
+      onMentionTrigger?.(mention.query, mention.pos, mention.trigger);
+      return;
+    }
+    // Only cancel once when leaving an active mention — avoid parent
+    // re-renders on every plain-text keystroke/delete.
+    if (mentionActiveRef.current) {
+      mentionActiveRef.current = false;
       onMentionCancel?.();
     }
   };
@@ -225,7 +232,8 @@ const ChatInput = ({
 
     nextCursor = Math.max(0, Math.min(text.length, nextCursor));
     selectionRef.current = { start: nextCursor, end: nextCursor };
-    setSelection(selectionRef.current);
+    // Keep selection in a ref only — setSelection here re-renders on every key
+    // and makes deletes feel lagged behind the caret.
     setMessage(text);
     updateMentionTrigger(text, nextCursor);
     skipSelectionMentionSync.current = true;
@@ -262,6 +270,15 @@ const ChatInput = ({
 
     return parseComposerMentionSegments(message, composerMentions);
   }, [composerMentions, highlightMentions, message]);
+
+  // Only hide the real TextInput text when there is something to color.
+  // Plain typing stays on the native input so deletes remain instant.
+  const showMentionOverlay = useMemo(
+    () =>
+      highlightMentions &&
+      composerSegments.some(segment => segment.type !== 'text'),
+    [composerSegments, highlightMentions],
+  );
 
   const resolvedInputHeight = clampComposerHeight(contentHeight);
   const composerScrollEnabled = shouldEnableComposerScroll(contentHeight);
@@ -432,7 +449,7 @@ const ChatInput = ({
             style={[
               styles.textInputWrapper,
               isExpanded
-                ? { minHeight: Math.max(44, resolvedInputHeight + 8) }
+                ? { minHeight: Math.max(52, resolvedInputHeight + 8) }
                 : null,
             ]}
             onLayout={handleTextInputWrapperLayout}
@@ -448,72 +465,92 @@ const ChatInput = ({
               </Text>
             ) : null}
 
-            {highlightMentions && composerSegments.length > 0 ? (
-              <AppText
-                pointerEvents="none"
+            <View style={styles.composerInputBox}>
+              {showMentionOverlay ? (
+                <Text
+                  allowFontScaling={false}
+                  pointerEvents="none"
+                  style={[
+                    styles.input,
+                    styles.inputOverlay,
+                    isExpanded ? { height: resolvedInputHeight } : null,
+                  ]}
+                >
+                  {composerSegments.map((segment, index) => {
+                    if (
+                      segment.type === 'channelMention' ||
+                      segment.type === 'channelRefMention'
+                    ) {
+                      return (
+                        <Text
+                          key={`composer-segment-${index}`}
+                          style={styles.composerChannelMentionText}
+                        >
+                          {segment.content}
+                        </Text>
+                      );
+                    }
+
+                    if (segment.type === 'userMention') {
+                      return (
+                        <Text
+                          key={`composer-segment-${index}`}
+                          style={styles.composerMentionText}
+                        >
+                          {segment.content}
+                        </Text>
+                      );
+                    }
+
+                    return (
+                      <Text
+                        key={`composer-segment-${index}`}
+                        style={styles.composerNormalText}
+                      >
+                        {segment.content}
+                      </Text>
+                    );
+                  })}
+                </Text>
+              ) : null}
+
+              <TextInput
+                ref={inputRef}
+                allowFontScaling={false}
+                cursorColor={colors.primary}
+                selectionColor={colors.primary}
+                placeholderTextColor={colors.textSecondary}
                 style={[
                   styles.input,
-                  styles.inputOverlay,
-                  isExpanded ? { height: resolvedInputHeight } : null,
+                  showMentionOverlay && styles.inputTransparentText,
+                  isExpanded
+                    ? { height: resolvedInputHeight, textAlignVertical: 'top' }
+                    : null,
                 ]}
-              >
-                {composerSegments.map((segment, index) => {
-                  if (segment.type === 'channelMention') {
-                    return (
-                      <AppText
-                        key={`composer-segment-${index}`}
-                        style={styles.composerChannelMentionText}
-                      >
-                        {segment.content}
-                      </AppText>
-                    );
-                  }
-
-                  if (segment.type === 'userMention') {
-                    return (
-                      <AppText
-                        key={`composer-segment-${index}`}
-                        style={styles.composerMentionText}
-                      >
-                        {segment.content}
-                      </AppText>
-                    );
-                  }
-
-                  return segment.content;
-                })}
-              </AppText>
-            ) : null}
-
-            <TextInput
-              ref={inputRef}
-              allowFontScaling={false}
-              style={[
-                styles.input,
-                highlightMentions && styles.inputTransparentText,
-                isExpanded ? { height: resolvedInputHeight } : null,
-              ]}
-              placeholder="Type a message"
-              value={message}
-              onChangeText={handleTextChange}
-              onSelectionChange={handleSelectionChange}
-              multiline
-              scrollEnabled={composerScrollEnabled}
-              blurOnSubmit={false}
-              onContentSizeChange={handleContentSizeChange}
-              textAlignVertical="top"
-              onPressIn={() => {
-                if (isEmojiOpen) onCloseEmoji();
-              }}
-              onFocus={() => {
-                isFocusedRef.current = true;
-                if (!isEmojiOpen) onFocus();
-              }}
-              onBlur={() => {
-                isFocusedRef.current = false;
-                onTypingChange?.(false);
-              }}
-            />
+                placeholder="Type a message"
+                value={message}
+                onChangeText={handleTextChange}
+                onSelectionChange={handleSelectionChange}
+                multiline
+                scrollEnabled={composerScrollEnabled}
+                blurOnSubmit={false}
+                onContentSizeChange={handleContentSizeChange}
+                // Center keeps the empty placeholder fully visible; top once
+                // the composer grows with typed text.
+                textAlignVertical={message.trim() ? 'top' : 'center'}
+                onPressIn={() => {
+                  if (isEmojiOpen) onCloseEmoji();
+                }}
+                onFocus={() => {
+                  isFocusedRef.current = true;
+                  if (!isEmojiOpen) onFocus();
+                }}
+                onBlur={() => {
+                  isFocusedRef.current = false;
+                  onTypingChange?.(false);
+                }}
+              />
+            </View>
 
             {!isEmojiOpen && (
               <TouchableOpacity

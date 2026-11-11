@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 
-export const MIN_COMPOSER_HEIGHT = 40;
+// Fits 16px Lato + vertical padding without clipping the placeholder.
+export const MIN_COMPOSER_HEIGHT = 44;
 export const MAX_COMPOSER_HEIGHT = 120;
 export const COMPOSER_EMOJI_WIDTH = 36;
 export const COMPOSER_WRAPPER_HORIZONTAL_PADDING = 24;
