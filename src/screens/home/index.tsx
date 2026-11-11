@@ -323,6 +323,7 @@ const HomeScreen = () => {
                           size={45}
                           badgeSize={12}
                           badgeRingColor={colors.background}
+                          borderColor={colors.border}
                           fallbackName={item.username}
                           disabled
                         />

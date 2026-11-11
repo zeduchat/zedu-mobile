@@ -22,6 +22,9 @@ interface UserAvatarProps {
   badgeSize?: number;
   /** Ring around the presence dot; match the surrounding background. */
   badgeRingColor?: string;
+  /** Optional border around the circular avatar image. */
+  borderColor?: string;
+  borderWidth?: number;
   /** Name used for the initials fallback when the user has no photo. */
   fallbackName?: string;
   disabled?: boolean;
@@ -35,6 +38,8 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   showBadge = true,
   badgeSize,
   badgeRingColor,
+  borderColor,
+  borderWidth = 1,
   fallbackName,
   disabled = false,
   onPress,
@@ -68,37 +73,48 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   const accessibilityLabel = showBadge
     ? [fallbackName, presenceLabel].filter(Boolean).join(', ')
     : fallbackName;
+
+  const avatarPx = normalize(size);
   const dotSize = normalize(badgeSize ?? size * 0.3);
   const ringSize = dotSize + BADGE_RING_WIDTH * 2;
+  // Grow the hit box just enough for a slight overhang — most of the badge
+  // still sits on the avatar rim.
+  const badgeOverhang = showBadge
+    ? Math.max(2, Math.round(ringSize * 0.22))
+    : 0;
 
   const dynamicStyles = {
     container: {
-      width: normalize(size),
-      height: normalize(size),
+      width: avatarPx + badgeOverhang,
+      height: avatarPx + badgeOverhang,
+      overflow: 'visible' as const,
     },
-    image: {
-      width: normalize(size),
-      height: normalize(size),
-      borderRadius: normalize(size / 2),
+    media: {
+      width: avatarPx,
+      height: avatarPx,
+      borderRadius: avatarPx / 2,
+      ...(borderColor ? { borderWidth, borderColor } : null),
     },
     initials: {
-      width: normalize(size),
-      height: normalize(size),
-      borderRadius: normalize(size / 2),
+      width: avatarPx,
+      height: avatarPx,
+      borderRadius: avatarPx / 2,
       backgroundColor: colors.primary,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
+      ...(borderColor ? { borderWidth, borderColor } : null),
     },
     initialsText: {
       color: colors.white,
     },
-    // The ring is an outer circle rather than a border so the dot keeps its
-    // full size and stays round on Android.
+    // Outer ring (not a border) keeps the green/gray dot round on Android.
     badgeRing: {
+      position: 'absolute' as const,
+      bottom: 0,
+      right: 0,
       width: ringSize,
       height: ringSize,
       borderRadius: ringSize / 2,
-      borderWidth: 0,
       backgroundColor: badgeRingColor ?? colors.white,
       alignItems: 'center' as const,
       justifyContent: 'center' as const,
@@ -134,7 +150,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
       ) : (
         <FastImage
           source={avatarSource}
-          style={dynamicStyles.image}
+          style={dynamicStyles.media}
           resizeMode={FastImage.resizeMode.cover}
           onError={() => setImageFailed(true)}
         />

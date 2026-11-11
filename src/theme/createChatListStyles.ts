@@ -80,16 +80,13 @@ export function createChatListStyles(colors: ThemeColors) {
       borderRadius: normalize(28),
     },
     avatarWrapper: {
-      width: 50,
-      height: 50,
+      // Must stay overflow-visible: borderRadius + overflow:hidden clips the
+      // presence badge into the avatar on Android.
       justifyContent: 'center',
       alignItems: 'center',
       position: 'relative',
-      overflow: 'hidden',
-      borderRadius: 25,
+      overflow: 'visible',
       zIndex: 6,
-      borderWidth: 1,
-      borderColor: colors.border,
     },
     groupAvatarContainer: {
       width: 50,

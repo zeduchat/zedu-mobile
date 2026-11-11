@@ -80,7 +80,7 @@ android {
         applicationId "net.emerj.zedu"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 25
+        versionCode 24
         versionName "1.0.11"
     }
     packaging {
