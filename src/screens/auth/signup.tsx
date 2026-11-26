@@ -21,7 +21,7 @@ import Container from '@/components/layout/container';
 import { PostRequest } from '@/utils/requests';
 import { storeMultipleData } from '@/utils/helper';
 import { configureGoogleSignIn, signInWithGoogle } from '@/lib/google-auth';
-import { signInWithApple } from '@/lib/apple-auth';
+import { isAppleSignInCancel, signInWithApple } from '@/lib/apple-auth';
 import { useTheme } from '@/theme/ThemeProvider';
 import { createAuthStyles } from '@/theme/createScreenStyles';
 // import RNPickerSelect from 'react-native-picker-select';
@@ -52,6 +52,7 @@ const SignupScreen: React.FC = () => {
           id_token: token,
         });
         if (error) {
+          dispatch({ type: ACTIONS.ERROR, payload: error });
           setAppleLoading(false);
           return;
         }
@@ -70,8 +71,13 @@ const SignupScreen: React.FC = () => {
         });
         dispatch({ type: ACTIONS.SUCCESS, payload: data.message });
       }
-    } catch (_e) {
-      // Already logged in signInWithApple
+    } catch (e) {
+      if (!isAppleSignInCancel(e)) {
+        dispatch({
+          type: ACTIONS.ERROR,
+          payload: 'Apple sign-in failed. Please try again.',
+        });
+      }
     }
     setAppleLoading(false);
   };
