@@ -126,8 +126,6 @@ const ThreadItem = ({ item, onMentionUser, onMentionChannel }: any) => {
     return null;
   };
 
-  console.log(item);
-
   //
 
   return (

@@ -134,12 +134,7 @@ export const AddNewMembersScreen = ({ route, navigation }: any) => {
       user_ids: selected.map(item => item),
     };
 
-    const { error, data: _data } = await PostRequest(
-      '/channels/add-multiple',
-      payload,
-    );
-
-    console.log('Add members response:', { error, _data });
+    const { error } = await PostRequest('/channels/add-multiple', payload);
 
     if (!error) {
       dispatch({ type: ACTIONS.CHANNEL_CALLBACK, payload: !callback });

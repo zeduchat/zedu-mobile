@@ -135,12 +135,7 @@ const StatusSheet = forwardRef<AppBottomSheetRef, Props>(
         online: true,
       };
 
-      const { error, data } = await PostRequest(
-        '/profile/change-status',
-        payload,
-      );
-
-      console.log(error, data);
+      const { error } = await PostRequest('/profile/change-status', payload);
 
       if (!error) {
         setLoading(false);
