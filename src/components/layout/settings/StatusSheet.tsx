@@ -25,6 +25,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { createStatusSheetStyles } from '@/theme/createChatOverlayStyles';
 import { useDataContext } from '@/store/useDataContext';
 import { PostRequest } from '@/utils/requests';
+import { ACTIONS } from '@/store/types';
 
 type Props = {
   initialText?: string;
@@ -91,14 +92,39 @@ const StatusSheet = forwardRef<AppBottomSheetRef, Props>(
     const [mode, setMode] = useState<'main' | 'clear'>('main');
     const [clearChoice, setClearChoice] = useState('dont');
     const [loading, setLoading] = useState(false);
-    const { state, dispatch: _dispatch } = useDataContext();
+    // Ignores extra taps on ✓ while a save is already in progress.
+    const submittingRef = useRef(false);
+    const { state, dispatch } = useDataContext();
     const { user } = state;
 
+    // The last saved status, restored when the sheet closes without saving.
+    const savedRef = useRef({ text: '', emoji: '', clearChoice: 'dont' });
+
+    const restoreSaved = () => {
+      setText(savedRef.current.text);
+      setEmoji(savedRef.current.emoji);
+      setClearChoice(savedRef.current.clearChoice);
+      setMode('main');
+    };
+
     useEffect(() => {
-      setText(user?.text);
-      setEmoji(user?.icon);
-      setClearChoice(user?.status_timeout || 'dont');
+      savedRef.current = {
+        text: user?.text || '',
+        emoji: user?.icon || '',
+        clearChoice: user?.status_timeout || 'dont',
+      };
+      restoreSaved();
     }, []);
+
+    // Keeps the saved status current when the user loads or changes later,
+    // without touching what is being edited.
+    useEffect(() => {
+      savedRef.current = {
+        text: user?.text || '',
+        emoji: user?.icon || '',
+        clearChoice: user?.status_timeout || 'dont',
+      };
+    }, [user?.text, user?.icon, user?.status_timeout]);
 
     useImperativeHandle(ref, () => ({
       expand: () => sheetRef.current?.expand(),
@@ -107,24 +133,25 @@ const StatusSheet = forwardRef<AppBottomSheetRef, Props>(
     }));
 
     const close = () => {
+      restoreSaved();
       sheetRef.current?.close();
     };
 
     const handleEmoji = (e: EmojiType) => {
       setEmoji(e.emoji ?? String(e));
       setShowEmojiPicker(false);
-      onChange && onChange(e.emoji ?? String(e), text, clearChoice);
     };
 
     const handlePresetSelection = (item: (typeof PRESET_STATUSES)[0]) => {
       setText(item.label);
       setEmoji(item.emoji);
       setClearChoice(item.clearKey);
-      onChange && onChange(item.emoji, item.label, item.clearKey);
     };
 
     // handle submit
     const handleSubmit = async () => {
+      if (submittingRef.current) return;
+      submittingRef.current = true;
       setLoading(true);
 
       const payload = {
@@ -135,24 +162,28 @@ const StatusSheet = forwardRef<AppBottomSheetRef, Props>(
         online: true,
       };
 
-      const { error, data } = await PostRequest(
-        '/profile/change-status',
-        payload,
-      );
+      const { error } = await PostRequest('/profile/change-status', payload);
 
-      console.log(error, data);
-
-      if (!error) {
-        setLoading(false);
-        close();
-      } else {
-        setLoading(false);
+      setLoading(false);
+      submittingRef.current = false;
+      if (error) {
+        dispatch({ type: ACTIONS.ERROR, payload: error });
+        return;
       }
+      // Only update the Settings row once the status is actually saved.
+      savedRef.current = { text, emoji, clearChoice };
+      onChange && onChange(emoji, text, clearChoice);
+      close();
     };
 
     return (
       <>
-        <AppBottomSheet ref={sheetRef} snapPoints={['98%']} paddingBottom={150}>
+        <AppBottomSheet
+          ref={sheetRef}
+          snapPoints={['98%']}
+          paddingBottom={150}
+          onClose={restoreSaved}
+        >
           <View style={styles.headerRow}>
             <TouchableOpacity
               onPress={mode === 'clear' ? () => setMode('main') : close}
@@ -196,10 +227,7 @@ const StatusSheet = forwardRef<AppBottomSheetRef, Props>(
                 </TouchableOpacity>
                 <TextInput
                   value={text}
-                  onChangeText={t => {
-                    setText(t);
-                    onChange && onChange(emoji, t, clearChoice);
-                  }}
+                  onChangeText={setText}
                   placeholder="What's your status?"
                   style={styles.textInput}
                   placeholderTextColor="#ABABAD"
