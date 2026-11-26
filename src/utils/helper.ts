@@ -82,7 +82,9 @@ export const clearAllData = async () => {
     if (preservedEntries.length) {
       await AsyncStorage.multiSet(preservedEntries);
     }
+    return true;
   } catch (e) {
     console.error('Error clearing local storage:', e);
+    return false;
   }
 };

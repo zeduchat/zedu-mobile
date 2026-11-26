@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import {
   StyleSheet,
   View,
@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { AppText } from '@/components/ui/text';
 import { AppButton } from '@/components/ui/button';
+import { ShowNotify } from '@/components/ui/toast';
 import { normalize } from '@/utils/normalize';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -152,9 +153,10 @@ const DeleteAccountScreen: React.FC = ({ navigation }: any) => {
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
   const [otherReason, setOtherReason] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [isDeleting, _setIsDeleting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  // Ignores extra taps while the deletion is already running.
+  const deleteInFlight = useRef(false);
   const { dispatch } = useDataContext();
-  const [_loading, setLoading] = useState(false);
 
   const isFormValid = useMemo(() => {
     if (!selectedReason) return false;
@@ -169,12 +171,25 @@ const DeleteAccountScreen: React.FC = ({ navigation }: any) => {
     }
   }, [isFormValid]);
 
-  const logout = async () => {
-    try {
-      setLoading(true);
-      await unregisterAndroidPushToken();
-      await clearAllData();
+  const closeConfirmationIfIdle = () => {
+    if (!deleteInFlight.current) setShowConfirmModal(false);
+  };
 
+  const logout = async () => {
+    if (deleteInFlight.current) return;
+    deleteInFlight.current = true;
+    setIsDeleting(true);
+
+    try {
+      await unregisterAndroidPushToken();
+      const cleared = await clearAllData();
+      if (!cleared) {
+        ShowNotify('Error', 'Could not delete your account. Please try again.');
+        return;
+      }
+
+      // Dismiss the modal before the app switches to the welcome screen.
+      setShowConfirmModal(false);
       // Dispatch everything at once to prevent partial state UI renders
       dispatch({ type: ACTIONS.TOKEN, payload: null });
       dispatch({ type: ACTIONS.USER, payload: null });
@@ -183,8 +198,10 @@ const DeleteAccountScreen: React.FC = ({ navigation }: any) => {
       dispatch({ type: ACTIONS.DMS_CHAT, payload: { data: [], page: 1 } });
     } catch (e) {
       console.error('Logout error', e);
+      ShowNotify('Error', 'Could not delete your account. Please try again.');
     } finally {
-      setLoading(false);
+      deleteInFlight.current = false;
+      setIsDeleting(false);
     }
   };
 
@@ -292,12 +309,18 @@ const DeleteAccountScreen: React.FC = ({ navigation }: any) => {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <Modal visible={showConfirmModal} transparent animationType="slide">
+      <Modal
+        visible={showConfirmModal}
+        transparent
+        animationType="slide"
+        onRequestClose={closeConfirmationIfIdle}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <TouchableOpacity
               style={styles.closeModal}
-              onPress={() => setShowConfirmModal(false)}
+              onPress={closeConfirmationIfIdle}
+              disabled={isDeleting}
             >
               <Ionicons name="close" size={24} color={colors.textSecondary} />
             </TouchableOpacity>
@@ -323,8 +346,9 @@ const DeleteAccountScreen: React.FC = ({ navigation }: any) => {
                 style={styles.finalDeleteBtn}
               />
               <TouchableOpacity
-                onPress={() => setShowConfirmModal(false)}
+                onPress={closeConfirmationIfIdle}
                 style={styles.keepAccountBtn}
+                disabled={isDeleting}
               >
                 <AppText variant="semiBold" style={{ color: colors.primary }}>
                   I've changed my mind

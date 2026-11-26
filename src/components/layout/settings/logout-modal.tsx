@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   View,
   Modal,
@@ -14,6 +14,7 @@ import { ACTIONS } from '@/store/types';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { createLogoutModalStyles } from '@/theme/createChatOverlayStyles';
+import { ShowNotify } from '@/components/ui/toast';
 
 interface LogoutModalProps {
   visible: boolean;
@@ -26,13 +27,28 @@ const LogoutConfirmationModal = ({ visible, onClose }: LogoutModalProps) => {
   const { dispatch } = useDataContext();
   const _navigation = useNavigation();
   const [loading, setLoading] = useState(false);
+  // Ignores extra taps while a sign-out is already running.
+  const logoutInFlight = useRef(false);
+
+  const closeIfIdle = () => {
+    if (!logoutInFlight.current) onClose();
+  };
 
   const logout = async () => {
-    try {
-      setLoading(true);
-      await unregisterAndroidPushToken();
-      await clearAllData();
+    if (logoutInFlight.current) return;
+    logoutInFlight.current = true;
+    setLoading(true);
 
+    try {
+      await unregisterAndroidPushToken();
+      const cleared = await clearAllData();
+      if (!cleared) {
+        ShowNotify('Error', 'Unable to log out. Please try again.');
+        return;
+      }
+
+      // Dismiss the modal before the app switches to the welcome screen.
+      onClose();
       dispatch({ type: ACTIONS.TOKEN, payload: null });
       dispatch({ type: ACTIONS.USER, payload: null });
       dispatch({ type: ACTIONS.ORG_DATA, payload: null });
@@ -40,7 +56,9 @@ const LogoutConfirmationModal = ({ visible, onClose }: LogoutModalProps) => {
       dispatch({ type: ACTIONS.DMS_CHAT, payload: { data: [], page: 1 } });
     } catch (e) {
       console.error('Logout error', e);
+      ShowNotify('Error', 'Unable to log out. Please try again.');
     } finally {
+      logoutInFlight.current = false;
       setLoading(false);
     }
   };
@@ -50,9 +68,9 @@ const LogoutConfirmationModal = ({ visible, onClose }: LogoutModalProps) => {
       transparent
       visible={visible}
       animationType="fade"
-      onRequestClose={onClose}
+      onRequestClose={closeIfIdle}
     >
-      <TouchableWithoutFeedback onPress={onClose}>
+      <TouchableWithoutFeedback onPress={closeIfIdle}>
         <View style={styles.overlay}>
           <TouchableWithoutFeedback>
             <View style={styles.modalContainer}>
@@ -65,7 +83,11 @@ const LogoutConfirmationModal = ({ visible, onClose }: LogoutModalProps) => {
               </AppText>
 
               <View style={styles.buttonContainer}>
-                <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={closeIfIdle}
+                  disabled={loading}
+                >
                   <AppText style={styles.cancelText}>Cancel</AppText>
                 </TouchableOpacity>
 
