@@ -95,13 +95,10 @@ export const MessageAction = forwardRef<
       });
 
       if (!error) {
-        console.log('Message deleted successfully');
         if (ref && 'current' in ref) {
           ref.current?.close();
         }
         onClose();
-      } else {
-        console.log('Error deleting message:', error);
       }
     } finally {
       setDeleteLoading(false);
