@@ -88,23 +88,26 @@ export const MessageAction = forwardRef<
         }`,
       );
 
-      dispatch({
-        type: ACTIONS.CHANNEL_CALLBACK,
-        payload: !state?.channelCallback,
-      });
-      dispatch({
-        type: ACTIONS.CALLBACK,
-        payload: !state?.callback,
-      });
-
       if (!error) {
+        dispatch({
+          type: ACTIONS.CHANNEL_CALLBACK,
+          payload: !state?.channelCallback,
+        });
+        dispatch({
+          type: ACTIONS.CALLBACK,
+          payload: !state?.callback,
+        });
+        ShowNotify('Success', 'Message deleted');
         if (ref && 'current' in ref) {
           ref.current?.close();
         }
         onClose();
+      } else {
+        ShowNotify('Error', error || 'Failed to delete message');
       }
     } catch (error) {
       console.error('Delete failed:', error);
+      ShowNotify('Error', 'Failed to delete message');
     } finally {
       setDeleteLoading(false);
     }
