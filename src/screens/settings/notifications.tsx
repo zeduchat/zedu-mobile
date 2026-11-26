@@ -27,6 +27,8 @@ const TIME_OPTIONS = Array.from({ length: 24 * 2 }, (_, i) => {
   return `${displayHour}:${min} ${ampm}`;
 });
 
+const END_TIME_OPTIONS = [...TIME_OPTIONS, '11:59 PM'];
+
 const CustomToggle = ({
   active,
   onPress,
@@ -95,6 +97,9 @@ const NotificationScreen = ({ navigation }: any) => {
   const [selectingFor, setSelectingFor] = useState<'startTime' | 'endTime'>(
     'startTime',
   );
+
+  const timeOptions =
+    selectingFor === 'endTime' ? END_TIME_OPTIONS : TIME_OPTIONS;
 
   const [prefs, setPrefs] = useState({
     notificationType: 'all',
@@ -378,7 +383,7 @@ const NotificationScreen = ({ navigation }: any) => {
       />
 
       <AppBottomSheet ref={bottomSheetRef} snapPoints={['50%']}>
-        {TIME_OPTIONS.map(item => (
+        {timeOptions.map(item => (
           <TouchableOpacity
             key={item}
             style={styles.timeOption}
