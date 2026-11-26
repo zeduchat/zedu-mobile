@@ -47,7 +47,7 @@
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>$(PRODUCT_NAME) needs access to your camera to let you take a photo for your profile picture.</string>
+	<string>$(PRODUCT_NAME) needs access to your camera to take a profile picture, to take photos and videos to send in chats, and to show your video in Buzz calls.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>$(PRODUCT_NAME) needs your location to provide location-based features.</string>
 	<key>NSMicrophoneUsageDescription</key>
@@ -55,7 +55,7 @@
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>$(PRODUCT_NAME) needs permission to save photos to your library.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>$(PRODUCT_NAME) needs access to your photo library to let you upload and change your profile picture.</string>
+	<string>$(PRODUCT_NAME) needs access to your photo library to choose a profile picture and to pick photos and videos to send in chats.</string>
 	<!--  -->
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>$(PRODUCT_NAME) needs access to your local network for video calling.</string>
