@@ -40,7 +40,12 @@ const AgentHome = () => {
       <AppText style={styles.emptySubTitle}>
         Tap the marketplace button to explore and install new agents.
       </AppText>
-      <TouchableOpacity style={styles.browseButton}>
+      <TouchableOpacity
+        style={styles.browseButton}
+        onPress={() =>
+          navigation.navigate('AgentStack', { screen: 'Marketplace' })
+        }
+      >
         <Image source={require('@/assets/icons/store-front.png')} />
         <AppText variant="bold" style={styles.browseButtonText}>
           Browse Marketplace
