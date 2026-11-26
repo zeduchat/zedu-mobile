@@ -347,16 +347,23 @@ const MessageItem = ({
             ]}
           >
             {isReceived && (
-              <AppText
-                size={13}
-                variant="bold"
-                style={[
-                  styles.senderNameLabel,
-                  { color: item.senderColor || colors.primary },
-                ]}
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => onMentionUser(item.user_id)}
+                accessibilityRole="button"
+                accessibilityLabel={`View profile of ${item.username}`}
               >
-                {item.username}
-              </AppText>
+                <AppText
+                  size={13}
+                  variant="bold"
+                  style={[
+                    styles.senderNameLabel,
+                    { color: item.senderColor || colors.primary },
+                  ]}
+                >
+                  {item.username}
+                </AppText>
+              </TouchableOpacity>
             )}
 
             {!forwardData && item.media && item.media.length > 0 && (

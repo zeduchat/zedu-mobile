@@ -292,18 +292,25 @@ const MessageItem = ({
           >
             <View>
               <View style={styles.senderRow}>
-                <AppText
-                  size={13}
-                  variant="bold"
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                  style={[
-                    styles.senderNameLabel,
-                    { color: item.senderColor || colors.primary },
-                  ]}
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => onMentionUser(item.user_id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`View profile of ${item.username}`}
                 >
-                  {truncateUsernameForChannel(item.username)}
-                </AppText>
+                  <AppText
+                    size={13}
+                    variant="bold"
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                    style={[
+                      styles.senderNameLabel,
+                      { color: item.senderColor || colors.primary },
+                    ]}
+                  >
+                    {truncateUsernameForChannel(item.username)}
+                  </AppText>
+                </TouchableOpacity>
                 <AppText size={10} style={styles.timeText}>
                   {moment(item.created_at).format('h:mm a')}
                 </AppText>
