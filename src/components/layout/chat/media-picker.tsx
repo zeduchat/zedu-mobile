@@ -27,7 +27,12 @@ import {
   launchImageLibrary,
   Asset,
 } from 'react-native-image-picker';
-import { pick, types } from '@react-native-documents/picker';
+import {
+  errorCodes,
+  isErrorWithCode,
+  pick,
+  types,
+} from '@react-native-documents/picker';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { useDataContext } from '@/store/useDataContext';
 import { ACTIONS } from '@/store/types';
@@ -375,19 +380,30 @@ export const MediaPickerSheet = forwardRef<
   const handleDocument = async () => {
     try {
       const [res] = await pick({ type: DOCUMENT_PICKER_TYPES });
-      if (res) {
-        openEditor(
-          res.uri,
-          'file',
-          res.name || undefined,
-          res.size
-            ? `${(Number(res.size) / 1048576).toFixed(1)} MB`
-            : undefined,
-        );
-        const response = await uploadFiles([res]);
-        dispatch({ type: ACTIONS.MEDIA, payload: response.data });
+      if (!res) return;
+
+      const response = await uploadFiles([res]);
+      if (!response.data) {
+        ShowNotify('Error', 'Failed to upload document. Please try again.');
+        return;
       }
-    } catch (_err) {}
+
+      openEditor(
+        res.uri,
+        'file',
+        res.name || undefined,
+        res.size ? `${(Number(res.size) / 1048576).toFixed(1)} MB` : undefined,
+      );
+      dispatch({ type: ACTIONS.MEDIA, payload: response.data });
+    } catch (error) {
+      if (
+        isErrorWithCode(error) &&
+        error.code === errorCodes.OPERATION_CANCELED
+      ) {
+        return;
+      }
+      ShowNotify('Error', 'Failed to attach document. Please try again.');
+    }
   };
 
   const handleAudio = async () => {
