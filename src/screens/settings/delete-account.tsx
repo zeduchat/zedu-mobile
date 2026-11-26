@@ -15,8 +15,7 @@ import { normalize } from '@/utils/normalize';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useDataContext } from '@/store/useDataContext';
-import { ACTIONS } from '@/store/types';
-import { clearAllData } from '@/utils/helper';
+import { signOut } from '@/utils/sign-out';
 import { unregisterAndroidPushToken } from '@/services/android-fcm.service';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -173,14 +172,7 @@ const DeleteAccountScreen: React.FC = ({ navigation }: any) => {
     try {
       setLoading(true);
       await unregisterAndroidPushToken();
-      await clearAllData();
-
-      // Dispatch everything at once to prevent partial state UI renders
-      dispatch({ type: ACTIONS.TOKEN, payload: null });
-      dispatch({ type: ACTIONS.USER, payload: null });
-      dispatch({ type: ACTIONS.ORG_DATA, payload: null });
-      dispatch({ type: ACTIONS.DMS, payload: [] });
-      dispatch({ type: ACTIONS.DMS_CHAT, payload: { data: [], page: 1 } });
+      await signOut(dispatch);
     } catch (e) {
       console.error('Logout error', e);
     } finally {
