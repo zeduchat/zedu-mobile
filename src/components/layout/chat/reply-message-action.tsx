@@ -533,7 +533,7 @@ export const ReplyMessageAction = forwardRef<
               />
               <ActionItem
                 label="Cancel"
-                icon={require('@/assets/icons/emoji.png')}
+                icon={require('@/assets/icons/close.png')}
                 handleClick={() => setMode('actions')}
               />
             </View>
