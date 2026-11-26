@@ -12,7 +12,7 @@ import { AppInput } from '@/components/ui/input';
 import { AppButton } from '@/components/ui/button';
 import { useNavigation } from '@react-navigation/native';
 import { configureGoogleSignIn, signInWithGoogle } from '@/lib/google-auth';
-import { signInWithApple } from '@/lib/apple-auth';
+import { isAppleSignInCancel, signInWithApple } from '@/lib/apple-auth';
 import { PostRequest } from '@/utils/requests';
 import { useDataContext } from '@/store/useDataContext';
 import { ACTIONS } from '@/store/types';
@@ -45,6 +45,7 @@ const SigninScreen: React.FC = () => {
         });
 
         if (error) {
+          dispatch({ type: ACTIONS.ERROR, payload: error });
           setAppleLoading(false);
           return;
         }
@@ -62,8 +63,13 @@ const SigninScreen: React.FC = () => {
           payload: data.data.user.organisation,
         });
       }
-    } catch (_e) {
-      // Already logged in signInWithApple
+    } catch (e) {
+      if (!isAppleSignInCancel(e)) {
+        dispatch({
+          type: ACTIONS.ERROR,
+          payload: 'Apple sign-in failed. Please try again.',
+        });
+      }
     }
     setAppleLoading(false);
   };

@@ -14,3 +14,7 @@ export const signInWithApple = async () => {
     throw error;
   }
 };
+
+/** True when the user closed the Apple sheet, which should stay silent. */
+export const isAppleSignInCancel = (error: unknown) =>
+  (error as { code?: string } | null)?.code === appleAuth.Error.CANCELED;
