@@ -443,7 +443,7 @@ export const MessageAction = forwardRef<
               {item?.user_id === state?.user?.user_id && (
                 <ActionItem
                   label="Edit Message"
-                  icon={require('@/assets/icons/edit-message.png')}
+                  ionicon="pencil-outline"
                   handleClick={handleEdit}
                 />
               )}
