@@ -472,6 +472,23 @@ const ChatDetailScreen = ({ navigation }: any) => {
       state.user?.user_id || state.user?.id,
       error,
     );
+
+    if (error) {
+      // Drop the pending bubble and give the text, mentions and media back
+      // so the user can retry instead of losing the message.
+      dispatch({
+        type: ACTIONS.DELETE_DM_MESSAGE,
+        payload: { threadId: tempId },
+      });
+      setMessage(content);
+      setMentionsMetadata(payload.mentions);
+      if (payload.media.length > 0) {
+        dispatch({ type: ACTIONS.MEDIA, payload: payload.media });
+      }
+      ShowNotify('Error', error || 'Failed to send message');
+      return;
+    }
+
     dispatch({ type: ACTIONS.CALLBACK, payload: !state.callback });
     clearUploads();
   };
