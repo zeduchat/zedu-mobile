@@ -128,7 +128,12 @@ const ProfileScreen = ({ navigation }: any) => {
       online: nextAwayValue ? false : true,
     };
 
-    await PostRequest('/profile/change-status', payload);
+    const { error } = await PostRequest('/profile/change-status', payload);
+    if (error) {
+      // The server kept the old status, so put the switch back.
+      setIsAway(!nextAwayValue);
+      dispatch({ type: ACTIONS.ERROR, payload: error });
+    }
   };
 
   const handleSave = async () => {
